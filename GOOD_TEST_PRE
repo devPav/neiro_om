@@ -1,0 +1,33 @@
+----------PREFLOP---------
+(34bb)(Utg)Kh Qc Jc 6c ([F, C(1), R(3)]) [pot.b. 1.5] [bet 1] -> R(3)
+[OR] from [SB/BB], I'm [Utg] KBBZ+(ss/ss)(np)
+calc.stack [..75], pot odds: Bad: 67%+. Call 3bet/4bet wo callers. Defend notBB vs pot open wo callers
+
+(148bb)(Mp)8c 7h 6d 4c ([F, C(3), R(7)]) [pot.b. 4.5] [bet 2] -> F
+[OR] from [EP/MP], I'm [Mp] ZZZX+(ss/ss)(np)
+calc.stack [75..], pot odds: Bad: 67%+. Call 3bet/4bet wo callers. Defend notBB vs pot open wo callers
+
+(219bb)(Co)Kd 7d 3s 2d ([F, C(3), R(7)]) [pot.b. 4.5] [bet 2] -> F
+[OR] from [EP/MP], I'm [Co] KZXX+(Ks)(np)
+calc.stack [75..], pot odds: Bad: 67%+. Call 3bet/4bet wo callers. Defend notBB vs pot open wo callers
+
+(131bb)(Btn)Jd Tc 8s 7c ([F, C(3), R(9)]) [pot.b. 4.5] [bet 2] -> R(9)
+[OR] from [EP/MP], I'm [Btn] BMZZ+(ss/ss)(np)
+calc.stack [75..], pot odds: Bad: 67%+. Call 3bet/4bet wo callers. Defend notBB vs pot open wo callers
+
+(207bb)(Sb)9d 8d 7s 4h ([F, C(9), R(25)]) [pot.b. 13.5] [bet 6] -> F
+[3bet] from [CO/BTN], I'm [Sb] MZZX+(ss/ss)(np)
+calc.stack [75..], pot odds: So: 37-66%. Hot call 3-bet wo callers. Open situation. Defend BB vs pot open. Defend notBB vs pot open w callers
+
+(106bb)(Bb)Qs Jh 5d 2c ([F, C(9), R(25)]) [pot.b. 13.5] [bet 6] -> R(25)
+[3bet] from [CO/BTN], I'm [Bb] BBXX+(os)(np)
+calc.stack [75..], pot odds: So: 37-66%. Hot call 3-bet wo callers. Open situation. Defend BB vs pot open. Defend notBB vs pot open w callers
+
+(34bb)(Utg)Kh Qc Jc 6c ([F, C(34), C(25)]) [pot.b. 37.5] [bet 16] -> C(25)
+[4bet+] from [SB/BB], I'm [Utg] KBBZ+(ss/ss)(np)
+calc.stack [..75], pot odds: So: 37-66%. Hot call 3-bet wo callers. Open situation. Defend BB vs pot open. Defend notBB vs pot open w callers
+
+(131bb)(Btn)Jd Tc 8s 7c ([F, C(25), R(63)]) [pot.b. 59.5] [bet 16] -> C(25)
+[4bet+] from [SB/BB], I'm [Btn] BMZZ+(ss/ss)(np)
+calc.stack [75..], pot odds: Good: 36%-. Call 3bet/4bet w callers. If don't need commit
+In all in 0

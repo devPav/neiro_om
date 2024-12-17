@@ -1,0 +1,45 @@
+Идиальная проверка экшенов:
+----------RIVER---------
+Ah Ad Kh 9h 3c pot:66 pre_end 66
+           ------ Try to find: 255#river#(LowFullHouse,Nothing,Nothing)|(flash,Nostreet(river),true,*)|(0,2,false,true,false)
+(52bb)(Utg)9c 4d 3s 3h Full<3,2>: 3 A ([X, R(50), R(33)]) [pot.b. 66] [m.bet 1] -> X
+           ------ Try to find: 255#river#(TPOP,Nothing,Nothing)|(flash,Nostreet(river),true,*)|(0,2,false,true,true)
+(196bb)(Btn)Jc 8s 7c 5h Pair<pair,tk,mk,lk>: A K J 8 ([X, R(66), R(50), R(33)]) [pot.b. 66] [m.bet 1] -> R(33)
+           ------ Try to find: 255#river#(LowFullHouse,Nothing,Nothing)|(flash,Nostreet(river),true,*)|(1,2,false,true,false)
+(52bb)(Utg)9c 4d 3s 3h Full<3,2>: 3 A ([F, C(52), C(33)]) [pot.b. 99] [m.bet 33] -> C(52)
+           ------ Try to find: 255#river#(TPOP,Nothing,Nothing)|(flash,Nostreet(river),true,*)|(1,2,true,true,true)
+(196bb)(Btn)Jc 8s 7c 5h Pair<pair,tk,mk,lk>: A K J 8 ([F, C(52)]) [pot.b. 151] [m.bet 33] -> F
+{Btn: -33, Sb: 0, Bb: 0, Mp: 0, Utg: 99, Co: 0}
+Heroes: [Btn]
+
+----------RIVER---------
+Th 8d 4d 3c 2c pot:21 pre_end 21
+           ------ Try to find: 255#river#(Set,Nothing,Nothing)|(noflash(river),Street,false,*)|(0,0,false,false,false)
+(64bb)(Bb)Kd 9h 2h 2d Trips<trips,tk,lk>: 2 T 8 ([X, R(21), R(16), R(10)]) [pot.b. 21] [m.bet 1] -> R(10)
+           ------ Try to find: 255#river#(Nothing,Nothing,Nothing)|(noflash(river),Street,false,*)|(1,1,false,false,false)
+(96bb)(Mp)Qs 9c 7c 4c Pair<pair,tk,mk,lk>: 4 Q T 8 ([F, C(10), R(51), R(41), R(30)]) [pot.b. 31] [m.bet 10] -> C(10)
+           ------ Try to find: 255#river#(Nothing,Nothing,Nothing)|(noflash(river),Street,false,*)|(1,1,false,false,true)
+(52bb)(Btn)Ad 9s 6s 6c Pair<pair,tk,mk,lk>: 6 T 8 4 ([F, C(10), R(48), R(36)]) [pot.b. 41] [m.bet 10] -> R(48)
+           ------ Try to find: 255#river#(Set,Nothing,Nothing)|(noflash(river),Street,false,*)|(2,2,true,false,false)
+(64bb)(Bb)Kd 9h 2h 2d Trips<trips,tk,lk>: 2 T 8 ([F, C(64), C(48)]) [pot.b. 89] [m.bet 38] -> C(48)
+           ------ Try to find: 255#river#(Nothing,Nothing,Nothing)|(noflash(river),Street,false,*)|(1,2,true,false,false)
+(96bb)(Mp)Qs 9c 7c 4c Pair<pair,tk,mk,lk>: 4 Q T 8 ([F, C(48), R(96)]) [pot.b. 127] [m.bet 38] -> C(48)
+{Bb: 117, Btn: -48, Mp: -48, Utg: 0, Sb: 0, Co: 0}
+Heroes: [Co]
+
+Идиальная проверка правильности результатов:
+----------RIVER---------
+Kc Qc Qh 6s 4s pot:50 pre_end 50
+           ------ Try to find: 255#river#(Nothing,Nothing,Nothing)|(noflash(river),Nostreet(river),true,*)|(0,1,false,false,false)
+(115bb)(Bb)Ac 8c 5d 2h Pair<pair,tk,mk,lk>: Q A K 8 ([X, R(50), R(38), R(25)]) [pot.b. 50] [m.bet 1] -> R(25)
+           ------ Try to find: 255#river#(Nothing,Nothing,Nothing)|(noflash(river),Nostreet(river),true,*)|(1,1,false,false,false)
+(82bb)(Utg)Ah Jh 5c 2s Pair<pair,tk,mk,lk>: Q A K J ([F, C(25), R(75)]) [pot.b. 75] [m.bet 25] -> R(75)
+           ------ Try to find: 255#river#(BottomBottom,Nothing,Nothing)|(noflash(river),Nostreet(river),true,*)|(3,2,true,false,true)
+(183bb)(Co)Ad 7s 4h 3h TwoPair<top,bot,k>: Q 4 A ([F, C(75), R(183)]) [pot.b. 150] [m.bet 50] -> C(75)
+           ------ Try to find: 255#river#(Nothing,Nothing,Nothing)|(noflash(river),Nostreet(river),true,*)|(1,2,true,false,false)
+(115bb)(Bb)Ac 8c 5d 2h Pair<pair,tk,mk,lk>: Q A K 8 ([F, C(115), C(75)]) [pot.b. 225] [m.bet 50] -> C(115)
+           ------ Try to find: 255#river#(Nothing,Nothing,Nothing)|(noflash(river),Nostreet(river),true,*)|(1,2,true,false,false)
+(82bb)(Utg)Ah Jh 5c 2s Pair<pair,tk,mk,lk>: Q A K J ([F, C(82)]) [pot.b. 315] [m.bet 50] -> C(82)
+           ------ Try to find: 255#river#(BottomBottom,Nothing,Nothing)|(noflash(river),Nostreet(river),true,*)|(1,2,true,false,true)
+(183bb)(Co)Ad 7s 4h 3h TwoPair<top,bot,k>: Q 4 A ([F, C(115)]) [pot.b. 322] [m.bet 50] -> F
+{Bb: -82, Sb: 0, Co: -75, Btn: 0, Utg: 207, Mp: 0}

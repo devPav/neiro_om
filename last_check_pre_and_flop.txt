@@ -1,0 +1,161 @@
+----------PREFLOP---------
+(75bb)(Utg)6h 4h 3s 2s ([F, C(1), R(3)]) [pot.b. 1.5] [bet 1] -> F 
+[OR] from [SB/BB], I'm [Utg] ZXXX(ds)(np)
+calc.stack [75..], pot odds: Bad: 67%+. Call 3bet/4bet wo callers. Defend notBB vs pot open wo callers
+0#preflop#0|2|2|ZXXX(ds)(np)|0|1
+(103bb)(Mp)Kd Qd Ts 6s ([F, C(1), R(3)]) [pot.b. 1.5] [bet 1] -> C(1) 
+[OR] from [SB/BB], I'm [Mp] KBMZ(ds)(np)
+calc.stack [75..], pot odds: Bad: 67%+. Call 3bet/4bet wo callers. Defend notBB vs pot open wo callers
+0#preflop#0|2|3|KBMZ(ds)(np)|0|1
+(70bb)(Co)Ac Ad Qc 9c ([F, C(1), R(3)]) [pot.b. 2.5] [bet 1] -> F 
+[OR] from [SB/BB], I'm [Co] AABM(As)(p)
+calc.stack [..75], pot odds: So: 37-66%. Hot call 3-bet wo callers. Open situation. Defend BB vs pot open. Defend notBB vs pot open w callers
+0#preflop#0|2|4|AABM(As)(p)|1|0
+(144bb)(Btn)As Td 8s 8c ([F, C(1), R(4)]) [pot.b. 2.5] [bet 1] -> F 
+[OR] from [SB/BB], I'm [Btn] AMLL(As)(p)
+calc.stack [75..], pot odds: So: 37-66%. Hot call 3-bet wo callers. Open situation. Defend BB vs pot open. Defend notBB vs pot open w callers
+0#preflop#0|2|5|AMLL(As)(p)|1|1
+(186bb)(Sb)Tc Th 7h 7d ([F, C(1), R(3)]) [pot.b. 2.5] [bet 1] -> F 
+[OR] from [SB/BB], I'm [Sb] MMLL(ss)(dp)
+calc.stack [75..], pot odds: Good: 36%-. Call 3bet/4bet w callers. If don't need commit
+0#preflop#0|2|0|MMLL(ss)(dp)|2|1
+(57bb)(Bb)Kh 7c 6d 2c ([X, R(2)]) [pot.b. 2.5] [bet 1] -> X 
+[OR] from [SB/BB], I'm [Bb] KLZX(ss)(np)
+calc.stack [..75], pot odds: Good: 36%-. Call 3bet/4bet w callers. If don't need commit
+0#preflop#0|2|1|KLZX(ss)(np)|2|0
+In all in 0
+----------FLOP---------
+Qh 8d 4c pot:2.5 pre_end 2.5
+(56bb)(Bb)Kh 7c 6d 2c Higt cards: (KQ874) ([X, R(2)]) [pot.b. 2.5] [m.bet 1] -> X 
+
+Hand r: Nothing fd: Nothing sd: Nothing
+Board: suit: rainbow; street: Dry; paired: false; struct *
+Situation: pot odds: Nothing, spr(adop): >5 deep, raised: false, hu: true, ip: false
+
+(102bb)(Mp)Kd Qd Ts 6s Pair: Q(K84) ([X, R(1)]) [pot.b. 2.5] [m.bet 1] -> X 
+
+Hand r: TPOP fd: Nothing sd: Nothing
+Board: suit: rainbow; street: Dry; paired: false; struct *
+Situation: pot odds: Nothing, spr(adop): >5 deep, raised: false, hu: true, ip: true
+
+All checks who can
+----------TURN---------
+Qh Jc 8d 4c pot:2.5 pre_end 2.5
+(56bb)(Bb)Kh 7c 6d 2c Higt cards: (KQJ87) ([X, R(2)]) [pot.b. 2.5] [m.bet 1] -> X 
+
+Hand r: Nothing fd: Low sd: Nothing
+Board: suit: 1 fd; street: Street; paired: false; struct BB
+Situation: pot odds: Nothing, spr(adop): >5 deep, raised: false, hu: true, ip: false
+
+(102bb)(Mp)Kd Qd Ts 6s Pair: Q(KJ8) ([X, R(2)]) [pot.b. 2.5] [m.bet 1] -> R(2) 100%
+
+Hand r: TPOP fd: Nothing sd: Oesd
+Board: suit: 1 fd; street: Street; paired: false; struct BB
+Situation: pot odds: Nothing, spr(adop): >5 deep, raised: false, hu: true, ip: true
+
+(56bb)(Bb)Kh 7c 6d 2c Higt cards: (KQJ87) ([F, C(2), R(5)]) [pot.b. 4.5] [m.bet 2] -> R(5) 50%
+
+Hand r: Nothing fd: Low sd: Nothing
+Board: suit: 1 fd; street: Street; paired: false; struct BB
+Situation: pot odds: Odds as faced bet 1/2-3/4(or hot call reraise), spr(adop): >5 deep, raised: false, hu: true, ip: false
+
+(102bb)(Mp)Kd Qd Ts 6s Pair: Q(KJ8) ([F, C(5), R(11)]) [pot.b. 9.5] [m.bet 3] -> C(5) 
+
+Hand r: TPOP fd: Nothing sd: Oesd
+Board: suit: 1 fd; street: Street; paired: false; struct BB
+Situation: pot odds: Odds as faced bet less 1/2(or a bit more w callers), spr(adop): >5 deep, raised: true, hu: true, ip: true
+
+----------RIVER---------
+Qh Jc 9s 8d 4c pot:12.5 pre_end 12.5
+(51bb)(Bb)Kh 7c 6d 2c Higt cards: (KQJ97) ([X, R(12)]) [pot.b. 12.5] [m.bet 1] -> R(12) 100%
+
+Hand r: Nothing fd: Nothing sd: Nothing
+Board: suit: no flash(river); street: Street; paired: false; struct *
+Situation: pot odds: Nothing, spr(adop): 2-5 middle, raised: false, hu: true, ip: false
+
+(97bb)(Mp)Kd Qd Ts 6s Street: K ([F, C(12), R(30)]) [pot.b. 24.5] [m.bet 12] -> C(12) 
+
+Hand r: NutStreet fd: Nothing sd: Nothing
+Board: suit: no flash(river); street: Street; paired: false; struct *
+Situation: pot odds: Odds as faced bet POT (or cold call RR), spr(adop): 2-5 middle, raised: false, hu: true, ip: true
+
+{Utg: 0, Mp: 14.67, Bb: -18, Sb: -0.5, Btn: 0, Co: 0}
+
+=========================================================================================================
+
+----------PREFLOP---------
+(149bb)(Utg)9s 8h 6h 5h ([F, C(1), R(3)]) [pot.b. 1.5] [bet 1] -> F 
+[OR] from [SB/BB], I'm [Utg] MLZZ(ss)(np)
+calc.stack [75..], pot odds: Bad: 67%+. Call 3bet/4bet wo callers. Defend notBB vs pot open wo callers
+0#preflop#0|2|2|MLZZ(ss)(np)|0|1
+(134bb)(Mp)Ac 6s 5d 4s ([F, C(1), R(3)]) [pot.b. 1.5] [bet 1] -> F 
+[OR] from [SB/BB], I'm [Mp] AZZX(ss)(np)
+calc.stack [75..], pot odds: Bad: 67%+. Call 3bet/4bet wo callers. Defend notBB vs pot open wo callers
+0#preflop#0|2|3|AZZX(ss)(np)|0|1
+(126bb)(Co)Qh 9c 8d 3d ([F, C(1), R(3)]) [pot.b. 1.5] [bet 1] -> F 
+[OR] from [SB/BB], I'm [Co] BMLX(ss)(np)
+calc.stack [75..], pot odds: Bad: 67%+. Call 3bet/4bet wo callers. Defend notBB vs pot open wo callers
+0#preflop#0|2|4|BMLX(ss)(np)|0|1
+(83bb)(Btn)8s 3c 2c 2h ([F, C(1), R(3)]) [pot.b. 1.5] [bet 1] -> C(1) 
+[OR] from [SB/BB], I'm [Btn] LXXX(ss)(p)
+calc.stack [75..], pot odds: Bad: 67%+. Call 3bet/4bet wo callers. Defend notBB vs pot open wo callers
+0#preflop#0|2|5|LXXX(ss)(p)|0|1
+(156bb)(Sb)Ks Jd 7s 5s ([F, C(1), R(3)]) [pot.b. 2.5] [bet 1] -> R(3) 50%
+[OR] from [SB/BB], I'm [Sb] KBLZ(Ks)(np)
+calc.stack [75..], pot odds: Good: 36%-. Call 3bet/4bet w callers. If don't need commit
+0#preflop#0|2|0|KBLZ(Ks)(np)|2|1
+(164bb)(Bb)Ad Qd 9d 2d ([F, C(3), R(10)]) [pot.b. 5] [bet 2] -> C(3) 
+[OR] from [SB/BB], I'm [Bb] ABMX(As)(np)
+calc.stack [75..], pot odds: So: 37-66%. Hot call 3-bet wo callers. Open situation. Defend BB vs pot open. Defend notBB vs pot open w callers
+0#preflop#0|2|1|ABMX(As)(np)|1|1
+(83bb)(Btn)8s 3c 2c 2h ([F, C(3), R(7)]) [pot.b. 7] [bet 2] -> F 
+[OR] from [SB/BB], I'm [Btn] LXXX(ss)(p)
+calc.stack [75..], pot odds: Good: 36%-. Call 3bet/4bet w callers. If don't need commit
+0#preflop#0|2|5|LXXX(ss)(p)|2|1
+In all in 0
+----------FLOP---------
+Kh Jh 5c pot:7 pre_end 7
+(153bb)(Sb)Ks Jd 7s 5s Two pair: KJ(5) ([X, R(7)]) [pot.b. 7] [m.bet 1] -> X 
+
+Hand r: TopTwo fd: Nothing sd: Nothing
+Board: suit: 1 fd; street: Dry; paired: false; struct BB
+Situation: pot odds: Nothing, spr(adop): >5 deep, raised: false, hu: true, ip: false
+
+(161bb)(Bb)Ad Qd 9d 2d Higt cards: (AKQJ5) ([X, R(4)]) [pot.b. 7] [m.bet 1] -> X 
+
+Hand r: Nothing fd: Nothing sd: Nothing
+Board: suit: 1 fd; street: Dry; paired: false; struct BB
+Situation: pot odds: Nothing, spr(adop): >5 deep, raised: false, hu: true, ip: true
+
+All checks who can
+----------TURN---------
+Kh Js Jh 5c pot:7 pre_end 7
+(153bb)(Sb)Ks Jd 7s 5s Full: <3>J<2>K ([X, R(7)]) [pot.b. 7] [m.bet 1] -> X 
+
+Hand r: LowFullHouse fd: Nothing sd: Nothing
+Board: suit: 1 fd; street: Dry; paired: true; struct BB
+Situation: pot odds: Nothing, spr(adop): >5 deep, raised: false, hu: true, ip: false
+
+(161bb)(Bb)Ad Qd 9d 2d Pair: J(AKQ) ([X, R(4)]) [pot.b. 7] [m.bet 1] -> X 
+
+Hand r: Nothing fd: Nothing sd: Nothing
+Board: suit: 1 fd; street: Dry; paired: true; struct BB
+Situation: pot odds: Nothing, spr(adop): >5 deep, raised: false, hu: true, ip: true
+
+All checks
+----------RIVER---------
+Kh Kd Js Jh 5c pot:7 pre_end 7
+(153bb)(Sb)Ks Jd 7s 5s Full: <3>K<2>J ([X, R(7)]) [pot.b. 7] [m.bet 1] -> X 
+
+Hand r: Imba fd: Nothing sd: Nothing
+Board: suit: no flash(river); street: No street(river); paired: true; struct *
+Situation: pot odds: Nothing, spr(adop): >5 deep, raised: false, hu: true, ip: false
+
+(161bb)(Bb)Ad Qd 9d 2d Pair: K(AQJ) ([X, R(4)]) [pot.b. 7] [m.bet 1] -> X 
+
+Hand r: TPOP fd: Nothing sd: Nothing
+Board: suit: no flash(river); street: No street(river); paired: true; struct *
+Situation: pot odds: Nothing, spr(adop): >5 deep, raised: false, hu: true, ip: true
+
+All checks who can
+{Mp: 0, Bb: -3, Co: 0, Sb: 3.65, Btn: -1, Utg: 0}
