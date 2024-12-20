@@ -13,8 +13,8 @@ use neiro_om::{
     },
     preflop_game,
     redis::{RedisStreet, RedisUtils},
-    ActionKind, FakePreflopPause, Game, Position, PreflopGame, MAP_INLINE_RANKS_RIVER,
-    MAP_INLINE_REALCOMB, MAP_INLINE_SUITS_RIVER,
+    ActionKind, Branch, Card, FakePreflopPause, Game, Hand, Node, Position, PreflopGame,
+    MAP_INLINE_RANKS_RIVER, MAP_INLINE_REALCOMB, MAP_INLINE_SUITS_RIVER,
 };
 use rand::Rng;
 use redis::Connection;
@@ -26,6 +26,9 @@ use std::{
     thread,
     time::Instant,
 };
+
+static DEBUG_REAL_MODE: bool = true;
+static DEBUG_FAKE_MODE: bool = true;
 
 static mut GLOBAL_GENERATION: u8 = 0;
 
@@ -66,7 +69,7 @@ fn main() {
         GLOBAL_GENERATION = args.generation_arg;
     }
     for _ in 1..=args.count {
-        gen_multithread_preflop_postflop_games(11);
+        gen_multithread_preflop_postflop_games(1);
         unsafe {
             GLOBAL_GENERATION += 1;
         }
@@ -178,134 +181,73 @@ fn gen_multithread_preflop_postflop_games(workers_count: u8) {
         result.len()
     );
     let file_name = format!("river_{}.txt", unsafe { GLOBAL_GENERATION });
-    if let RedisResult::Err(_) = RedisUtils::write_to_redis(&result, &file_name) {
-        panic!("err write to redis")
-    }
+    // if let RedisResult::Err(_) = RedisUtils::write_to_redis(&result, &file_name) {
+    //     panic!("err write to redis")
+    // }
     _print_details_preflop(result);
 }
 fn gen_games() -> BTreeMap<(String, u8), (Decimal, Decimal)> {
     let mut con = RedisUtils::connect().unwrap();
     // (Ключ, действие)(накапливаем сумму результатов, накапливаем счетчик когда встречалось=количество розыгрышей)
     let mut all_fakes: BTreeMap<(String, u8), (Decimal, Decimal)> = BTreeMap::new();
-    let debug_real_mode = false;
-    let debug_fake_mode = false;
     let time = Instant::now();
-    for _ in 1..=2_300_000 {
-        // let real_network_player = Position::rnd_two_positions();
-        // if debug_real_mode {
-        //     println!("Hero is {:?}", real_network_player)
-        // }
-        let mut fake_pre: Vec<(Position, String, u8, Decimal)> = vec![];
-        let mut fake_flop: Vec<(Position, String, u8, Decimal)> = vec![];
-        let mut fake_turn: Vec<(Position, String, u8, Decimal)> = vec![];
-        let mut fake_river: Vec<(Position, String, u8, Decimal)> = vec![];
-        let mut real_hands_end = HashMap::new();
-        // let preflop_game = preflop(
-        //     &mut fake_pre,
-        //     debug_real_mode,
-        //     debug_fake_mode,
-        //     &mut con,
-        //     &real_network_player,
-        // );
-        // if preflop_game.end_of_hand_five_foldes() {
-        //     let winners =
-        //         eval_result::eval_clear_win_loose_five_fold(vec![preflop_game.positions_and_money]);
-        //     add_wins_to_redis_fakes(&mut fake_pre, &winners, &mut all_fakes);
-        //     if debug_real_mode {
-        //         println!("{:?}", winners);
-        //     }
-        //     continue;
-        // }
-        // let flop_game = flop(
-        //     &preflop_game,
-        //     &mut fake_flop,
-        //     debug_real_mode,
-        //     debug_fake_mode,
-        //     &mut con,
-        //     &real_network_player,
-        // );
-        // if flop_game.end_of_hand_five_foldes() {
-        //     let winners = eval_result::eval_clear_win_loose_five_fold(vec![
-        //         preflop_game.positions_and_money,
-        //         flop_game.positions_and_money,
-        //     ]);
-        //     add_wins_to_redis_fakes(&mut fake_pre, &winners, &mut all_fakes);
-        //     add_wins_to_redis_fakes(&mut fake_flop, &winners, &mut all_fakes);
-        //     if debug_real_mode {
-        //         println!("{:?}", winners);
-        //     }
-        //     continue;
-        // }
-        let preflop_game = syntetic_preflop();
-        let mut flop_game = syntetic_postflop(&preflop_game);
-        // let mut prev_agr_pose = modify_game_ml(&mut flop_game);
-        // let real_network_player = rnd_one_positions_not_folded(&flop_game);
-        // let turn_game = turn(
-        //     &flop_game,
-        //     &mut fake_turn,
-        //     debug_real_mode,
-        //     debug_fake_mode,
-        //     &mut con,
-        //     &real_network_player,
-        //     &mut prev_agr_pose,
-        // );
-        // if turn_game.end_of_hand_five_foldes() {
-        //     let winners = eval_result::eval_clear_win_loose_five_fold(
-        //         vec![
-        //             // preflop_game.positions_and_money,
-        //             // flop_game.positions_and_money,
-        //             turn_game.positions_and_money,
-        //         ],
-        //         Some(flop_game.main_pot.value),
-        //     );
-        //     add_wins_to_redis_fakes(&mut fake_pre, &winners, &mut all_fakes);
-        //     add_wins_to_redis_fakes(&mut fake_flop, &winners, &mut all_fakes);
-        //     add_wins_to_redis_fakes(&mut fake_turn, &winners, &mut all_fakes);
-        //     if debug_real_mode {
-        //         println!("{:?}", winners);
-        //     }
-        //     continue;
-        // }
 
-        let mut turn_game = syntetic_postflop(&flop_game);
-        let prev_agr_pose = modify_game_ml(&mut turn_game);
-        let real_network_player = rnd_one_positions_not_folded(&turn_game);
-        if debug_real_mode {
-            println!(
-                "Heroes: {:?}, prevagr: {:?}",
-                real_network_player, prev_agr_pose
-            )
+    // Тут я должен рандомить 2160 стартовых ситуаций ривера. Но пока захардкорю одну.
+    let lock_cards = vec![
+        Card::from_string_ui("Ts".to_string()),
+        Card::from_string_ui("2s".to_string()),
+        Card::from_string_ui("9c".to_string()),
+        Card::from_string_ui("Kc".to_string()),
+        Card::from_string_ui("Ac".to_string()),
+        Card::from_string_ui("Js".to_string()),
+        Card::from_string_ui("Qh".to_string()),
+        Card::from_string_ui("5s".to_string()),
+        Card::from_string_ui("2h".to_string()),
+    ];
+    let spr = dec!(200);
+
+    // Тут я должен залоченную стартовую ситуацию сыграть 100 раз. При этом меняется все, кроме залоченных параметров.
+    for _ in 1..=1 {
+        let preflop_game = syntetic_preflop(&lock_cards);
+        let flop_game = syntetic_postflop(&preflop_game);
+        let turn_game = syntetic_postflop(&flop_game);
+        let mut river_game = syntetic_postflop(&turn_game);
+
+        let prev_agr_pose = modify_game_ml(&mut river_game, spr);
+        let fake_board = Utils::new_fake_flop_board(&river_game);
+        let prev_fake_board = Utils::new_fake_flop_board(&turn_game);
+        let ch_board_str = fake_board != prev_fake_board;
+
+        let real_network_player = rnd_one_positions_not_folded(&river_game);
+        temporary_modify_river(&mut river_game, &real_network_player[0]);
+
+        // На 0-м поколении разыграю по одному разу все возможные ветки, по которым может пройти раздача.
+        if DEBUG_REAL_MODE {
+            println!("Prev board {:?}", turn_game.cards);
         }
-        let river_game = river(
-            &turn_game,
-            &mut fake_river,
-            debug_real_mode,
-            debug_fake_mode,
-            &mut real_hands_end,
-            &mut con,
-            &real_network_player,
-            prev_agr_pose,
-        );
-        // Очень внимательно с этим местом. Сильно меняется в зависимости какую улицу счетаем в нейросети.
-        // Если коротко - какую улицу считаем в нейросети, такая и должна быть перво в векторе positions_and_money
-        // Все что было раньше - экстра деньги (бомбопот), все что было позже важно.
-        let winners = eval_result::eval_clear_win_loose(
-            vec![
-                // preflop_game.positions_and_money,
-                // flop_game.positions_and_money,
-                // turn_game.positions_and_money,
-                river_game.positions_and_money,
-            ],
-            &real_hands_end,
-            Some(turn_game.main_pot.value),
-        );
-        add_wins_to_redis_fakes(&mut fake_pre, &winners, &mut all_fakes);
-        add_wins_to_redis_fakes(&mut fake_flop, &winners, &mut all_fakes);
-        add_wins_to_redis_fakes(&mut fake_turn, &winners, &mut all_fakes);
-        add_wins_to_redis_fakes(&mut fake_river, &winners, &mut all_fakes);
-        if debug_real_mode {
-            println!("{:?}", winners);
+        let brances = Branch::all_branches();
+        for branch in brances.into_iter() {
+            let mut real_hands_end = HashMap::new();
+            play_river(branch, &mut river_game, &mut real_hands_end, &mut con);
+            break;
         }
+        // let winners = eval_result::eval_clear_win_loose(
+        //     vec![
+        //         // preflop_game.positions_and_money,
+        //         // flop_game.positions_and_money,
+        //         // turn_game.positions_and_money,
+        //         river_game.positions_and_money,
+        //     ],
+        //     &real_hands_end,
+        //     Some(turn_game.main_pot.value),
+        // );
+        // add_wins_to_redis_fakes(&mut fake_pre, &winners, &mut all_fakes);
+        // add_wins_to_redis_fakes(&mut fake_flop, &winners, &mut all_fakes);
+        // add_wins_to_redis_fakes(&mut fake_turn, &winners, &mut all_fakes);
+        // add_wins_to_redis_fakes(&mut fake_river, &winners, &mut all_fakes);
+        // if debug_real_mode {
+        //     println!("{:?}", winners);
+        // }
     }
     println!("Seconds gone: {}", time.elapsed().as_secs());
     all_fakes
@@ -703,6 +645,83 @@ fn turn(
     *prev_agr_pose = current_agr;
     return turn_game;
 }
+fn play_river(
+    branch: Branch,
+    river_game: &mut PostflopGame,
+    real_hands_end: &mut HashMap<Position, ReadyHand>,
+    con: &mut redis::Connection,
+) {
+    if DEBUG_REAL_MODE {
+        println!("----------RIVER---------");
+        println!("----------BR: {:?}", branch);
+    }
+    let poses = vec![
+        Position::Sb,
+        Position::Bb,
+        Position::Utg,
+        Position::Mp,
+        Position::Co,
+        Position::Btn,
+    ];
+    if DEBUG_REAL_MODE {
+        println!("{:?}", river_game);
+    }
+    let mut action_count = 0_usize;
+    for &position in poses.iter().cycle() {
+        if river_game.folded_positions().contains(&position)
+            || river_game.position_in_allin(position)
+        {
+            continue;
+        }
+        let Some(&node) = branch.path.get(action_count) else {
+            break;
+        };
+        let possible_act = action::possible_action_kind(river_game, position);
+        dbg!(&possible_act);
+        let act = Node::action_from_node(node, river_game.main_pot.value, &possible_act);
+
+        if !river_game.folded_positions().contains(&position) && possible_act.is_empty() {
+            /* Если по какой-то причине пустой набор вариантов возможных действий, то это паника в селе, спятил дед
+             */
+            panic!("Empty possible actions");
+        }
+        if possible_act.is_empty() {
+            /* Так как это не конец игры, значит пустой набор возможных действий означает, что эта
+            позиция либо в алине либо в фолде.
+            В таком случае игроку не нужно совершать действие => не нужно делать точку принятия решения
+            и записывать в базу.
+             */
+            continue;
+        }
+
+        if DEBUG_REAL_MODE {
+            let player = river_game.player_by_position_as_ref(position);
+            let combination = real_comb(&player.hand, &river_game.cards);
+            println!(
+                "{:?} {:?} ({:?}) [pot {}] [m.bet {}] -> {:?}",
+                player,
+                combination,
+                possible_act,
+                river_game.main_pot.value,
+                river_game.min_bet,
+                act,
+            );
+        }
+
+        river_game.do_action_on_position(Some(act), position);
+
+        action_count += 1;
+        //println!("{:?} ", action::already_commit_by_pos(&flop_game, position));
+    }
+    // За розыгрыш ривера могут сфолдить, поэтому из real_hands_end они исключаются
+    // потомучто там должны храниться только комбинации между которых будет делиться банк
+    poses
+        .iter()
+        .filter(|&pos| river_game.folded_positions().contains(&pos))
+        .for_each(|&pos| {
+            real_hands_end.remove(&pos);
+        });
+}
 #[allow(non_snake_case)]
 fn river(
     turn_game: &PostflopGame,
@@ -1019,8 +1038,12 @@ fn print_end_redis_fakes(records: &BTreeMap<(String, u8), (Decimal, Decimal)>) {
     }
 }
 #[allow(dead_code)]
-fn syntetic_preflop() -> PreflopGame {
-    PreflopGame::new()
+fn syntetic_preflop(lock_cards: &Vec<Card>) -> PreflopGame {
+    if lock_cards.is_empty() {
+        PreflopGame::new()
+    } else {
+        PreflopGame::new_with_lock_cards(lock_cards)
+    }
 }
 #[allow(dead_code)]
 fn syntetic_postflop(init_game: &impl Game) -> PostflopGame {
@@ -1028,7 +1051,26 @@ fn syntetic_postflop(init_game: &impl Game) -> PostflopGame {
     // let bottles = if is_friday { 3 } else { 1 };
     PostflopGame::from(init_game)
 }
-fn modify_game_ml(init_game: &mut PostflopGame) -> Option<Position> {
+fn temporary_modify_river(init_game: &mut PostflopGame, position_real_player: &Position) {
+    // SORTED !!!
+    init_game.cards = vec![
+        Card::from_string_ui("Ac".to_string()),
+        Card::from_string_ui("Kc".to_string()),
+        Card::from_string_ui("Ts".to_string()),
+        Card::from_string_ui("9c".to_string()),
+        Card::from_string_ui("2s".to_string()),
+    ];
+    let player = init_game.player_by_position_as_mut_ref(*position_real_player);
+    // Not sorted !!!
+    player.hand = Hand::new(
+        Card::from_string_ui("Js".to_string()),
+        Card::from_string_ui("Qh".to_string()),
+        Card::from_string_ui("5s".to_string()),
+        Card::from_string_ui("2h".to_string()),
+    )
+    .unwrap();
+}
+fn modify_game_ml(init_game: &mut PostflopGame, spr: Decimal) -> Option<Position> {
     let mut rnd = rand::thread_rng();
 
     /* Сгенерирую сфолдвшие позиции.
@@ -1040,10 +1082,6 @@ fn modify_game_ml(init_game: &mut PostflopGame) -> Option<Position> {
     */
     let num_of_folded_players = match rnd.gen_range(1..=100_u8) {
         1..=100 => 4,
-        71..=90 => 3,
-        91..=95 => 2,
-        96..=98 => 1,
-        99..=100 => 0,
         _ => unreachable!(),
     };
     let mut play_positions = vec![
@@ -1076,8 +1114,10 @@ fn modify_game_ml(init_game: &mut PostflopGame) -> Option<Position> {
     2 - (12-50)
     */
     let players_in_play_count = play_positions.len();
-    let pot_value = rnd.gen_range(6 * players_in_play_count..=75);
+    // let pot_value = rnd.gen_range(6 * players_in_play_count..=30);
+    let pot_value = 20;
     init_game.main_pot_as_mut_ref().value = Decimal::from(pot_value);
+    init_game.main_pot_as_mut_ref().prev_street_end_size = Decimal::from(pot_value);
 
     /* Сгенерируем размер стеков на ривере в зависимости от размера пота.
     Если размер пота большой, то размер стеков поменьше и наоборот.
@@ -1090,7 +1130,8 @@ fn modify_game_ml(init_game: &mut PostflopGame) -> Option<Position> {
             // 1..=50 => Decimal::from(rnd.gen_range(25..=150)),
             // 51..=75 => Decimal::from(rnd.gen_range(50..=150)),
             // 76..=100 => Decimal::from(rnd.gen_range(50..=130)),
-            _ => Decimal::from(rnd.gen_range(40..=200)),
+            _ => spr,
+            // _ => Decimal::from(rnd.gen_range(40..=200)),
         }
     });
     /* Сгенерирую случайного агрессора на предыдущей улице

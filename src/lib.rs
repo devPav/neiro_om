@@ -13,6 +13,8 @@ pub use postflop_game::{
     AgroStreet, FakePostReadyHand, FakePostflopFD, FakePostflopPause, FakePostflopSD, PostflopGame,
 };
 pub use preflop_game::{ActionKind, *};
+pub use strategy::{Branch, Node};
+
 use rust_decimal::Decimal;
 
 pub mod action;
@@ -24,6 +26,7 @@ pub mod player;
 pub mod postflop_game;
 pub mod preflop_game;
 pub mod redis;
+pub mod strategy;
 
 lazy_static! {
     pub static ref MAP_INLINE_RANKS_RIVER: BTreeMap<String, FakeBoard> =

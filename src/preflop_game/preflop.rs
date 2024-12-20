@@ -1,4 +1,4 @@
-use crate::{Card, Game, Player, Position};
+use crate::{player, Card, Game, Hand, Player, Position};
 use rand::Rng;
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
@@ -92,6 +92,37 @@ impl Game for PreflopGame {
     }
 }
 impl PreflopGame {
+    pub fn new_with_lock_cards(lock_cards: &Vec<Card>) -> Self {
+        let mut dead_cards = lock_cards.clone();
+        let player_utg = Self::make_player_modify_dedcards_after_it(Position::Utg, &mut dead_cards);
+        let player_mp = Self::make_player_modify_dedcards_after_it(Position::Mp, &mut dead_cards);
+        let player_co = Self::make_player_modify_dedcards_after_it(Position::Co, &mut dead_cards);
+        let player_btn = Self::make_player_modify_dedcards_after_it(Position::Btn, &mut dead_cards);
+        let player_sb = Self::make_player_modify_dedcards_after_it(Position::Sb, &mut dead_cards);
+        let player_bb = Self::make_player_modify_dedcards_after_it(Position::Bb, &mut dead_cards);
+
+        Self {
+            players: vec![
+                player_utg, player_mp, player_co, player_btn, player_sb, player_bb,
+            ],
+            positions_and_money: HashMap::from([
+                (Position::Utg, dec!(0)),
+                (Position::Mp, dec!(0)),
+                (Position::Co, dec!(0)),
+                (Position::Btn, dec!(0)),
+                (Position::Sb, dec!(0.5)),
+                (Position::Bb, dec!(1)),
+            ]),
+            folded_positions: HashSet::new(),
+            main_pot: Pot {
+                value: dec!(1.5),
+                members: vec![Position::Sb, Position::Bb],
+                prev_street_end_size: dec!(0),
+            },
+            min_bet: dec!(1),
+            dead_cards,
+        }
+    }
     pub fn new() -> Self {
         let mut dead_cards = vec![];
         let player_utg = Self::make_player_modify_dedcards_after_it(Position::Utg, &mut dead_cards);
@@ -132,5 +163,17 @@ impl PreflopGame {
             dead_cards.push(card);
         }
         player
+    }
+    pub fn player_by_position_as_ref(&self, position: Position) -> &Player {
+        self.players
+            .iter()
+            .find(|player| player.position == position)
+            .unwrap_or_else(|| unreachable!())
+    }
+    pub fn player_by_position_as_mut_ref(&mut self, position: Position) -> &mut Player {
+        self.players
+            .iter_mut()
+            .find(|player| player.position == position)
+            .unwrap_or_else(|| unreachable!())
     }
 }
