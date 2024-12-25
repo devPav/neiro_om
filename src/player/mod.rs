@@ -70,6 +70,16 @@ impl Position {
         // }
         positions
     }
+    pub fn all_poses() -> Vec<Self> {
+        vec![
+            Position::Sb,
+            Position::Bb,
+            Position::Utg,
+            Position::Mp,
+            Position::Co,
+            Position::Btn,
+        ]
+    }
 }
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]

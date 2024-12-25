@@ -593,7 +593,7 @@ impl Utils {
         FakeSituationNew { action, spr }
     }
     pub fn we_have_blockers(
-        player: &Player,
+        player_cards: &[Card],
         fake_board: &FakeBoardNew,
         game: &PostflopGame,
     ) -> bool {
@@ -601,7 +601,7 @@ impl Utils {
             FakeBoardNew::FlashNoPair => {
                 let flash_blocker = game.flash_blockers_to_board();
                 if let Some(card) = flash_blocker {
-                    player.hand.cards.contains(&card)
+                    player_cards.contains(&card)
                 } else {
                     false
                 }
@@ -610,20 +610,28 @@ impl Utils {
                 // Длина вектора всегда 2.
                 let street_blockers = game.street_blockers_to_board();
                 if let Some(v) = street_blockers {
-                    let count1 = player.hand.cards.iter().fold(0, |acc, &x| {
-                        if x.rank == v[0] {
-                            acc + 1
-                        } else {
-                            acc
-                        }
-                    });
-                    let count2 = player.hand.cards.iter().fold(0, |acc, &x| {
-                        if x.rank == v[1] {
-                            acc + 1
-                        } else {
-                            acc
-                        }
-                    });
+                    let count1 =
+                        player_cards.iter().fold(
+                            0,
+                            |acc, &x| {
+                                if x.rank == v[0] {
+                                    acc + 1
+                                } else {
+                                    acc
+                                }
+                            },
+                        );
+                    let count2 =
+                        player_cards.iter().fold(
+                            0,
+                            |acc, &x| {
+                                if x.rank == v[1] {
+                                    acc + 1
+                                } else {
+                                    acc
+                                }
+                            },
+                        );
                     if count1 >= 2 || count2 >= 2 {
                         true
                     } else {
@@ -859,7 +867,7 @@ impl Utils {
         fake_board: &FakeBoardNew,
         game: &PostflopGame,
     ) -> PotentialFE {
-        let blockers = Self::we_have_blockers(player, fake_board, game);
+        let blockers = Self::we_have_blockers(&player.hand.cards, fake_board, game);
         PotentialFE {
             blockers,
             raise_vs_bet_hu_hspr: false,

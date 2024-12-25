@@ -7,6 +7,7 @@ use std::{
 };
 
 use super::fake_postflop::Utils;
+#[derive(Clone)]
 pub struct PostflopGame {
     //pub cards: [Card; 3],
     pub cards: Vec<Card>, // always sort from top to low!!! Eval fake hand, strret fake etc
