@@ -63,9 +63,11 @@ pub fn possible_action_kind(game: &impl Game, position: Position) -> Vec<ActionK
             possible_acts.push(ActionKind::Raise(size_75_raise));
             possible_acts.push(ActionKind::Raise(size_50_raise));
         } else if can_75_size_raise {
+            possible_acts.push(ActionKind::Raise(player.stack_size)); // ???
             possible_acts.push(ActionKind::Raise(size_75_raise));
             possible_acts.push(ActionKind::Raise(size_50_raise));
         } else if can_50_size_raise {
+            possible_acts.push(ActionKind::Raise(player.stack_size)); // ???
             possible_acts.push(ActionKind::Raise(size_50_raise));
         } else {
             possible_acts.push(ActionKind::Raise(player.stack_size)) // Если могу рейзнуть, но не хватает на сайзы, ставлю все что хватает

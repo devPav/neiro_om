@@ -10,7 +10,8 @@ pub use hand::{Card, Hand, Rank, Suit};
 pub use hand::{FakeCard, FakeHand, FakeRank};
 pub use player::{FakePlayer, FakeStackSize, Player, Position};
 pub use postflop_game::{
-    AgroStreet, FakePostReadyHand, FakePostflopFD, FakePostflopPause, FakePostflopSD, PostflopGame,
+    AgroStreet, FakeBoardNew, FakePostReadyHand, FakePostflopFD, FakePostflopHand, FakePostflopNew,
+    FakePostflopPause, FakePostflopSD, PostflopGame, Spr,
 };
 pub use preflop_game::{ActionKind, *};
 pub use strategy::{Branch, Node};
