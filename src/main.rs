@@ -217,13 +217,20 @@ fn gen_games() -> BTreeMap<(String, u8), (Decimal, Decimal)> {
     let mut fakes_graphs = HashMap::new();
     let mut fakes_count = HashMap::new();
     loop {
-        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() > 2 {
+        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() > 100 {
             break;
         }
-        if !fakes_count.is_empty() {
-            // println!("-----------------");
-            // println!("{}", *fakes_count.values().min().unwrap());
-            // println!("{:?}", fakes_count);
+        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() == 5 {
+            println!("5");
+        }
+        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() == 15 {
+            println!("15");
+        }
+        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() == 25 {
+            println!("25");
+        }
+        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() == 55 {
+            println!("55");
         }
         // Create a new game with full random, except the spr for now.
         let lock_cards = vec![];
@@ -278,7 +285,7 @@ fn gen_games() -> BTreeMap<(String, u8), (Decimal, Decimal)> {
                     .or_insert(GraphPoint::get_all_graph_points());
                 min_count_fake = min_count_fake.min(*fakes_count.get(&fake).unwrap());
             });
-        if min_count_fake > 1000 {
+        if min_count_fake > 100 {
             continue;
         }
 
