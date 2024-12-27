@@ -600,7 +600,8 @@ impl Utils {
             FakeBoardNew::FlashNoPair => {
                 let flash_blocker = game.flash_blockers_to_board();
                 if let Some(card) = flash_blocker {
-                    player_cards.contains(&card)
+                    let count_of_suit = player_cards.iter().filter(|c| c.suit == card.suit).count();
+                    player_cards.contains(&card) && count_of_suit < 2
                 } else {
                     false
                 }
@@ -631,7 +632,7 @@ impl Utils {
                                 }
                             },
                         );
-                    if count1 >= 2 || count2 >= 2 {
+                    if (count1 >= 2 || count2 >= 2) && !(count1 > 0 && count2 > 0) {
                         true
                     } else {
                         false

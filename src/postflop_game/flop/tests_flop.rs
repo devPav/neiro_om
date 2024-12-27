@@ -35,7 +35,9 @@ pub mod street_blockers {
             Card::new(Rank::Three, Suit::Spades),
             Card::new(Rank::Two, Suit::Daemonds),
         ];
-        let answer = vec![Rank::Jack, Rank::Ten];
+        let answer = vec![Rank::Seven, Rank::Six];
+
+        let answer_set = answer.into_iter().collect::<HashSet<_>>();
 
         let preflop_game = PreflopGame::new();
         let flop_game = PostflopGame::from(&preflop_game);
@@ -44,7 +46,20 @@ pub mod street_blockers {
         river_game.cards = board;
 
         let street_blockers = river_game.street_blockers_to_board();
-        assert!(street_blockers.is_none());
+        assert!(street_blockers.is_some());
+
+        let street_blockers = street_blockers.unwrap();
+        let street_blockers_set = street_blockers.into_iter().collect::<HashSet<_>>();
+
+        let diff1 = answer_set
+            .difference(&street_blockers_set)
+            .collect::<HashSet<_>>();
+        let diff2 = street_blockers_set
+            .difference(&answer_set)
+            .collect::<HashSet<_>>();
+
+        assert!(diff1.is_empty());
+        assert!(diff2.is_empty());
     }
     #[test]
     fn AKQJ9() {
@@ -77,7 +92,9 @@ pub mod street_blockers {
             Card::new(Rank::Three, Suit::Spades),
             Card::new(Rank::Three, Suit::Daemonds),
         ];
-        let answer = vec![Rank::Jack, Rank::Ten];
+        let answer = vec![Rank::Seven, Rank::Six];
+
+        let answer_set = answer.into_iter().collect::<HashSet<_>>();
 
         let preflop_game = PreflopGame::new();
         let flop_game = PostflopGame::from(&preflop_game);
@@ -86,7 +103,20 @@ pub mod street_blockers {
         river_game.cards = board;
 
         let street_blockers = river_game.street_blockers_to_board();
-        assert!(street_blockers.is_none());
+        assert!(street_blockers.is_some());
+
+        let street_blockers = street_blockers.unwrap();
+        let street_blockers_set = street_blockers.into_iter().collect::<HashSet<_>>();
+
+        let diff1 = answer_set
+            .difference(&street_blockers_set)
+            .collect::<HashSet<_>>();
+        let diff2 = street_blockers_set
+            .difference(&answer_set)
+            .collect::<HashSet<_>>();
+
+        assert!(diff1.is_empty());
+        assert!(diff2.is_empty());
     }
     #[test]
     fn A5533() {
@@ -348,7 +378,7 @@ pub mod street_blockers {
             Card::new(Rank::Five, Suit::Spades),
             Card::new(Rank::Four, Suit::Daemonds),
         ];
-        let answer = vec![Rank::Two, Rank::Three];
+        let answer = vec![Rank::Six, Rank::Seven];
         let answer_set = answer.into_iter().collect::<HashSet<_>>();
 
         let preflop_game = PreflopGame::new();
@@ -500,6 +530,80 @@ pub mod street_blockers {
 
         let street_blockers = river_game.street_blockers_to_board();
         assert!(street_blockers.is_none());
+    }
+    #[test]
+    fn AJ975() {
+        // board always sorted
+        let board = vec![
+            Card::new(Rank::Ace, Suit::Spades),
+            Card::new(Rank::Jack, Suit::Spades),
+            Card::new(Rank::Nine, Suit::Daemonds),
+            Card::new(Rank::Seven, Suit::Spades),
+            Card::new(Rank::Five, Suit::Daemonds),
+        ];
+        let answer = vec![Rank::Eight, Rank::Ten];
+
+        let answer_set = answer.into_iter().collect::<HashSet<_>>();
+
+        let preflop_game = PreflopGame::new();
+        let flop_game = PostflopGame::from(&preflop_game);
+        let turn_game = PostflopGame::from(&flop_game);
+        let mut river_game = PostflopGame::from(&turn_game);
+        river_game.cards = board;
+
+        let street_blockers = river_game.street_blockers_to_board();
+        assert!(street_blockers.is_some());
+        dbg!(&street_blockers);
+
+        let street_blockers = street_blockers.unwrap();
+        let street_blockers_set = street_blockers.into_iter().collect::<HashSet<_>>();
+
+        let diff1 = answer_set
+            .difference(&street_blockers_set)
+            .collect::<HashSet<_>>();
+        let diff2 = street_blockers_set
+            .difference(&answer_set)
+            .collect::<HashSet<_>>();
+
+        assert!(diff1.is_empty());
+        assert!(diff2.is_empty());
+    }
+    #[test]
+    fn AJ654() {
+        // board always sorted
+        let board = vec![
+            Card::new(Rank::Ace, Suit::Spades),
+            Card::new(Rank::Jack, Suit::Spades),
+            Card::new(Rank::Six, Suit::Daemonds),
+            Card::new(Rank::Five, Suit::Spades),
+            Card::new(Rank::Four, Suit::Daemonds),
+        ];
+        let answer = vec![Rank::Eight, Rank::Seven];
+
+        let answer_set = answer.into_iter().collect::<HashSet<_>>();
+
+        let preflop_game = PreflopGame::new();
+        let flop_game = PostflopGame::from(&preflop_game);
+        let turn_game = PostflopGame::from(&flop_game);
+        let mut river_game = PostflopGame::from(&turn_game);
+        river_game.cards = board;
+
+        let street_blockers = river_game.street_blockers_to_board();
+        assert!(street_blockers.is_some());
+        dbg!(&street_blockers);
+
+        let street_blockers = street_blockers.unwrap();
+        let street_blockers_set = street_blockers.into_iter().collect::<HashSet<_>>();
+
+        let diff1 = answer_set
+            .difference(&street_blockers_set)
+            .collect::<HashSet<_>>();
+        let diff2 = street_blockers_set
+            .difference(&answer_set)
+            .collect::<HashSet<_>>();
+
+        assert!(diff1.is_empty());
+        assert!(diff2.is_empty());
     }
 }
 

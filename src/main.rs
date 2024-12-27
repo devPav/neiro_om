@@ -14,8 +14,9 @@ use neiro_om::{
     preflop_game,
     redis::{RedisStreet, RedisUtils},
     strategy::GraphPoint,
-    ActionKind, Branch, Card, FakePostflopNew, FakePreflopPause, Game, Hand, Node, Position,
-    PreflopGame, Spr, MAP_INLINE_RANKS_RIVER, MAP_INLINE_REALCOMB, MAP_INLINE_SUITS_RIVER,
+    ActionKind, Branch, Card, FakePostReadyHand, FakePostflopNew, FakePreflopPause, Game, Hand,
+    Node, Position, PreflopGame, Spr, MAP_INLINE_RANKS_RIVER, MAP_INLINE_REALCOMB,
+    MAP_INLINE_SUITS_RIVER,
 };
 use rand::Rng;
 use redis::Connection;
@@ -25,7 +26,8 @@ use serde_json;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fmt::format,
-    io::Write,
+    io::{Read, Write},
+    iter,
     sync::Mutex,
     thread,
     time::Instant,
@@ -71,7 +73,8 @@ fn main() {
     );
     // fakeboard::inline_real_combination();
     // thread::available_parallelism() = 12
-    gen_serde_games_river();
+    // gen_serde_games_river();
+    check_games();
     std::process::exit(0);
 
     let args = Args::parse();
@@ -1378,5 +1381,57 @@ fn gen_serde_games_river() {
 fn write_to_file(content: String, file_name: &str) -> std::io::Result<()> {
     let mut f = std::fs::File::create(file_name)?;
     f.write_all(content.as_bytes())?;
+    Ok(())
+}
+fn check_games() -> std::io::Result<()> {
+    let mut file = std::fs::File::open("river_fake_and_game.txt")?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+    let games_str: HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>> =
+        serde_json::from_str(&contents).unwrap();
+    println!("Count of river games: {}", games_str.len());
+
+    let mut file = std::fs::File::open("river_fakes.txt")?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+    let fakes: HashSet<FakePostflopNew> = serde_json::from_str(&contents).unwrap();
+    println!("Count of fakes: {}", fakes.len());
+
+    for fake in &fakes {
+        let games_for_fake = games_str
+            .clone()
+            .into_iter()
+            .filter(|(_, v)| v[0].0 == *fake || v[1].0 == *fake)
+            .collect::<HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>>>();
+        println!("Fake: {:?} Games: {}", fake, games_for_fake.len());
+
+        if fake.blockers == false
+            && fake.fake_board == FakeBoardNew::StreetNoFlashNoPair
+            && fake.my_fake_hand.ready == FakePostReadyHand::NutStreet
+        {
+            for g in &games_for_fake {
+                let game: PostflopGame = serde_json::from_str(g.0).unwrap();
+                println!("b: {:?}", game.cards);
+                let player = game.player_by_position_as_ref(g.1[0].1);
+                println!("p1: {:?}", player.hand);
+                let player = game.player_by_position_as_ref(g.1[1].1);
+                println!("p2: {:?}", player.hand);
+            }
+        }
+        if fake.blockers == true
+            && fake.fake_board == FakeBoardNew::StreetNoFlashNoPair
+            && fake.my_fake_hand.ready == FakePostReadyHand::NutStreet
+        {
+            for g in &games_for_fake {
+                let game: PostflopGame = serde_json::from_str(g.0).unwrap();
+                println!("b: {:?}", game.cards);
+                let player = game.player_by_position_as_ref(g.1[0].1);
+                println!("p1: {:?}", player.hand);
+                let player = game.player_by_position_as_ref(g.1[1].1);
+                println!("p2: {:?}", player.hand);
+            }
+        }
+    }
+
     Ok(())
 }

@@ -152,6 +152,7 @@ impl PostflopGame {
         */
         let mut best_three_for_street = None;
         let mut blockers = vec![];
+        let mut can_be_dropped = false;
         for i in 0..ranks.len() {
             for j in i + 1..ranks.len() {
                 for k in j + 1..ranks.len() {
@@ -169,11 +170,13 @@ impl PostflopGame {
                         val if val >= 0 && val <= 2 => {
                             if best_three_for_street.is_some() {
                                 let best = best_three_for_street.clone().unwrap();
-                                if v > best {
+                                if v > best || can_be_dropped {
                                     best_three_for_street = Some(v.clone());
+                                    can_be_dropped = false;
                                 }
                             } else {
                                 best_three_for_street = Some(v.clone());
+                                can_be_dropped = false;
                             };
                         }
                         _ => {}
@@ -184,6 +187,7 @@ impl PostflopGame {
                         let low_street = v.iter().all(|rank| v1.contains(rank));
                         if v[0] == Rank::Ace && low_street {
                             best_three_for_street = Some(v.clone());
+                            can_be_dropped = true;
                         }
                     }
                 }
@@ -193,6 +197,7 @@ impl PostflopGame {
             let v = best_three_for_street.unwrap();
             let first_discriminant = v[0] as isize;
             let second_discriminant = v[1] as isize;
+            let last_discriminant = v[2] as isize;
             // Для лоу стритов разница между первым и вторым дискриминантом будет равна 9-и и больше (А5*). Для обычных не больше 4-х.
             if first_discriminant == 12 && first_discriminant - second_discriminant >= 9 {
                 let set_v1 =
@@ -203,11 +208,12 @@ impl PostflopGame {
                 let mut b = b.iter().map(|&x| *x).collect::<Vec<_>>();
                 blockers.append(&mut b);
             } else {
+                let gap_counts = first_discriminant - last_discriminant - 2;
                 let full_set = Rank::to_vec_from_low().into_iter().collect::<HashSet<_>>();
                 let set = v.into_iter().collect::<HashSet<_>>();
                 let diff = full_set.difference(&set);
                 let mut max_after_diff = diff
-                    .filter(|&&rank| rank as isize <= first_discriminant + 2)
+                    .filter(|&&rank| rank as isize <= first_discriminant + 2 - gap_counts)
                     .map(|r| *r)
                     .collect::<Vec<_>>();
                 max_after_diff.sort_unstable_by(|a, b| b.cmp(a));
