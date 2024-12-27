@@ -1,13 +1,14 @@
 use crate::{Card, Game, Player, Position, Pot, Rank, MAP_INLINE_RANKS_RIVER};
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     fmt::Debug,
 };
 
 use super::fake_postflop::Utils;
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PostflopGame {
     //pub cards: [Card; 3],
     pub cards: Vec<Card>, // always sort from top to low!!! Eval fake hand, strret fake etc

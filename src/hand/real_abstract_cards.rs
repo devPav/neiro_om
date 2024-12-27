@@ -2,12 +2,13 @@ use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     fmt::{Debug, Display},
 };
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum Rank {
     Two,
     Three,
@@ -130,7 +131,7 @@ impl Debug for Rank {
     }
 }
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum Suit {
     Daemonds,
     Harts,
@@ -165,7 +166,7 @@ impl Debug for Suit {
     }
 }
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub struct Card {
     pub rank: Rank,
     pub suit: Suit,
@@ -228,7 +229,7 @@ impl Display for Card {
     }
 }
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Serialize, Deserialize)]
 pub struct Hand {
     pub cards: [Card; 4], // always sort from top to low!!!
 }

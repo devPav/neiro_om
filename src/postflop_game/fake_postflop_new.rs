@@ -4,7 +4,9 @@ use rust_decimal_macros::dec;
 use crate::{AgroStreet, FakeBoardNew, FakePostflopHand};
 use std::fmt::{Debug, Display};
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Serialize, Deserialize)]
 pub enum Spr {
     Deep,   // In neiro = 10
     Middle, // from 1 to 2. In neiro = 5
@@ -47,7 +49,7 @@ impl Display for Spr {
     }
 }
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Serialize, Deserialize)]
 pub struct FakePostflopNew {
     // river: 4*15*2*2*3*3=2160
     pub fake_board: FakeBoardNew,

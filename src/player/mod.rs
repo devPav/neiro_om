@@ -5,6 +5,7 @@ use rand::{
 };
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy)]
@@ -33,7 +34,7 @@ impl FakeStackSize {
     }
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum Position {
     // Order like postflop, because I cmp it in fakepostflop. Was from UTG
     Sb,
@@ -82,7 +83,7 @@ impl Position {
     }
 }
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Serialize, Deserialize)]
 pub struct Player {
     pub position: Position,
     pub stack_size: Decimal,

@@ -1,19 +1,18 @@
-use rust_decimal::prelude::*;
-use rust_decimal_macros::dec;
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fmt::{Debug, Display};
-use std::sync::LockResult;
-
 use crate::eval_hand::real_comb;
 use crate::postflop_game::{eval_fake_hand, flop};
 use crate::{action, inline::fakeboard, Card, Game, Player, Position, Rank};
+use rust_decimal::prelude::*;
+use rust_decimal_macros::dec;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::fmt::{Debug, Display};
 
 use crate::PostflopGame;
 
 use super::eval_fake_hand::{fake_comb_side_fd, fake_comb_side_ready, fake_comb_side_sd};
 
 // Hand:
-#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum FakePostReadyHand {
     // 15
     Nothing, // One case trips or care on board and have no pair.It's trash hand, so its here
@@ -45,7 +44,7 @@ pub enum FakePostReadyHand {
           // SUPER RARE ERROR TTTT2 = KQ33 is here
           // -> LowFullHouse
 }
-#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum FakePostflopFD {
     // 7 (5 on flop, 6 on turn, 1 on river)
     Nothing,
@@ -56,7 +55,7 @@ pub enum FakePostflopFD {
     TwoFD,        // only turn
     TwoFdWithNut, // only turn
 }
-#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum FakePostflopSD {
     // 4 flop, 4 turn, 1 river
     Nothing, // Gut shot is here
@@ -64,7 +63,7 @@ pub enum FakePostflopSD {
     NoNutWrap, // first candidate to delete
     NutWrap,
 }
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub struct FakePostflopHand {
     // flop 15*5*4 = 300, turn 15*6*4 = 360, river 15*1*1 = 15
     pub ready: FakePostReadyHand,
@@ -938,7 +937,7 @@ impl Display for FakeActionNew {
         write!(f, "{}", s)
     }
 }
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum FakeBoardNew {
     Pair,
     FlashNoPair,
@@ -990,7 +989,7 @@ impl Display for FakeSituationNew {
     }
 }
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum AgroStreet {
     Me,
     NotMe,

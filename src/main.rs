@@ -21,8 +21,11 @@ use rand::Rng;
 use redis::Connection;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
+use serde_json;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
+    fmt::format,
+    io::Write,
     sync::Mutex,
     thread,
     time::Instant,
@@ -68,6 +71,8 @@ fn main() {
     );
     // fakeboard::inline_real_combination();
     // thread::available_parallelism() = 12
+    gen_serde_games_river();
+    std::process::exit(0);
 
     let args = Args::parse();
 
@@ -96,92 +101,59 @@ fn allin_count(game: &PreflopGame) -> u8 {
             }
         })
 }
-fn _print_details_preflop(map: BTreeMap<(String, u8), (Decimal, Decimal)>) {
-    let often_situation = *map.values().max_by(|&x, &y| x.1.cmp(&y.1)).unwrap();
-    let wr_often_situation = (often_situation.0 / often_situation.1).round() * dec!(100);
-    let key_often_situation = map
-        .iter()
-        .find_map(|(key, &val)| {
-            if val == often_situation {
-                Some(key)
-            } else {
-                None
-            }
-        })
-        .unwrap();
-    let rare_situation = *map.values().min_by(|&x, &y| x.1.cmp(&y.1)).unwrap();
-    let wr_rare_situation = (rare_situation.0 / rare_situation.1).round() * dec!(100);
-    let key_rare_situation = map
-        .iter()
-        .find_map(|(key, &val)| {
-            if val == rare_situation {
-                Some(key)
-            } else {
-                None
-            }
-        })
-        .unwrap();
+fn _print_details_preflop(map: HashMap<FakePostflopNew, Vec<GraphPoint>>) {
+    let mut hand = HashSet::new();
+    let mut board = HashSet::new();
+    let mut spr = HashSet::new();
+    let mut blockers = HashSet::new();
+    let mut hboard = HashSet::new();
+    let mut hagro = HashSet::new();
+
+    for (fake, _) in map {
+        hand.insert(fake.my_fake_hand);
+        board.insert(fake.fake_board);
+        spr.insert(fake.spr);
+        blockers.insert(fake.blockers);
+        hboard.insert(fake.ch_board_str);
+        hagro.insert(fake.prev_agr);
+    }
+
     println!(
-        "Uniq number of key+id {},
-max by hands: key {:?} (hands {:?} wr {:?}), 
-min by hands: key {:?} (hands {:?} wr {:?})",
-        map.len(),
-        key_often_situation,
-        often_situation.1,
-        wr_often_situation,
-        key_rare_situation,
-        rare_situation.1,
-        wr_rare_situation
+        "f.hands: {}, f. boards: {}, f.spr: {}, f.blockers: {}, f.chboard: {}, f.prevagro: {}",
+        hand.len(),
+        board.len(),
+        spr.len(),
+        blockers.len(),
+        hboard.len(),
+        hagro.len()
     );
-    let over_ten_thousand = map.iter().fold(0, |acc, (_, &(_, hands))| {
-        if hands >= dec!(10_000) {
-            return acc + 1;
-        }
-        acc
-    });
-    let over_thousand = map.iter().fold(0, |acc, (_, &(_, hands))| {
-        if hands >= dec!(1_000) {
-            return acc + 1;
-        }
-        acc
-    });
-    let over_hundred = map.iter().fold(0, |acc, (_, &(_, hands))| {
-        if hands >= dec!(100) {
-            return acc + 1;
-        }
-        acc
-    });
-    let over_twenty = map.iter().fold(0, |acc, (_, &(_, hands))| {
-        if hands >= dec!(20) {
-            return acc + 1;
-        }
-        acc
-    });
-    let less_five = map.iter().fold(0, |acc, (_, &(_, hands))| {
-        if hands <= dec!(5) {
-            return acc + 1;
-        }
-        acc
-    });
-    println!(
-        "(>10_000):{} ,(>1000)):{}, (>100):{}, (>20):{}, (<5):{}",
-        over_ten_thousand, over_thousand, over_hundred, over_twenty, less_five
-    );
+
+    println!("{:?}", hand);
+    println!("{:?}", board);
+    println!("{:?}", spr);
+    println!("{:?}", blockers);
+    println!("{:?}", hboard);
+    println!("{:?}", hagro);
 }
 fn gen_multithread_preflop_postflop_games(workers_count: u8) {
     // (Ключ, действие)(накапливаем сумму результатов, накапливаем счетчик когда встречалось=количество розыгрышей)
-    let mut result: BTreeMap<(String, u8), (Decimal, Decimal)> = BTreeMap::new();
+    let mut result: HashMap<FakePostflopNew, Vec<GraphPoint>> = HashMap::new();
     let mut handles = Vec::new();
     for _ in 1..=workers_count {
         let handle = thread::spawn(|| gen_games());
         handles.push(handle);
     }
     for handle in handles {
-        let map = handle.join().unwrap();
-        for (key, (result_win, hands)) in map {
-            let val = result.entry(key).or_default();
-            val.0 += result_win;
-            val.1 += hands;
+        let map_spawn = handle.join().unwrap();
+        for (fake, graph_points) in map_spawn {
+            let v = result
+                .entry(fake)
+                .or_insert(GraphPoint::get_all_graph_points());
+            for point in graph_points.iter() {
+                let p = v.iter_mut().find(|p| p.node == point.node).unwrap();
+                p.hands += point.hands;
+                p.win += point.win;
+            }
         }
     }
     println!(
@@ -195,12 +167,14 @@ fn gen_multithread_preflop_postflop_games(workers_count: u8) {
     // }
     _print_details_preflop(result);
 }
-fn gen_games() -> BTreeMap<(String, u8), (Decimal, Decimal)> {
+fn gen_games() -> HashMap<FakePostflopNew, Vec<GraphPoint>> {
     let mut con = RedisUtils::connect().unwrap();
     // (Ключ, действие)(накапливаем сумму результатов, накапливаем счетчик когда встречалось=количество розыгрышей)
     let mut all_fakes: BTreeMap<(String, u8), (Decimal, Decimal)> = BTreeMap::new();
     let time = Instant::now();
 
+    let mut debug_time_summ = 0;
+    let mut debug_time_summ2 = 0;
     // let mut map_end = HashMap::new();
     // Тут я должен рандомить 2160 стартовых ситуаций ривера. Но пока захардкорю одну.
     // let lock_cards = vec![
@@ -216,21 +190,16 @@ fn gen_games() -> BTreeMap<(String, u8), (Decimal, Decimal)> {
     // ];
     let mut fakes_graphs = HashMap::new();
     let mut fakes_count = HashMap::new();
+    let mut serde_river = HashMap::new();
+    let mut cc = 0_usize;
     loop {
+        let a = time.elapsed().as_secs();
         if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() > 100 {
             break;
         }
-        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() == 5 {
-            println!("5");
-        }
-        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() == 15 {
-            println!("15");
-        }
-        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() == 25 {
-            println!("25");
-        }
-        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() == 55 {
-            println!("55");
+        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() > cc {
+            println!("{cc}");
+            cc = *fakes_count.values().min().unwrap();
         }
         // Create a new game with full random, except the spr for now.
         let lock_cards = vec![];
@@ -275,6 +244,22 @@ fn gen_games() -> BTreeMap<(String, u8), (Decimal, Decimal)> {
                     prev_agr: AgroStreet::calculate(&prev_agr_pose, pos),
                     spr: Spr::from(spr),
                 };
+                // serde
+                let fake_string = serde_json::to_string(&fake).unwrap();
+                let pos_string = serde_json::to_string(&pos).unwrap();
+                let key = format!("{}|{}", pos_string, fake_string);
+                serde_river
+                    .entry(key.clone())
+                    .and_modify(|v: &mut Vec<PostflopGame>| v.push(river_game.clone()))
+                    .or_insert(vec![river_game.clone()]);
+                // let s = serde_json::to_string(&serde_river).unwrap();
+                // let f = serde_json::from_str::<HashMap<String, Vec<PostflopGame>>>(&s).unwrap();
+                // let mut ff = HashMap::new();
+                // for (k, v) in f {
+                //     let nk = serde_json::from_str::<FakePostflopNew>(&k).unwrap();
+                //     ff.insert(nk, v.clone());
+                // }
+                //
                 fakes_positions.insert(pos, fake.clone());
                 fakes_count
                     .entry(fake.clone())
@@ -288,7 +273,11 @@ fn gen_games() -> BTreeMap<(String, u8), (Decimal, Decimal)> {
         if min_count_fake > 100 {
             continue;
         }
+        let b = time.elapsed().as_secs();
+        let c = b - a;
+        debug_time_summ += c;
 
+        let aa = time.elapsed().as_secs();
         // На 0-м поколении разыграю по одному разу все возможные ветки, по которым может пройти раздача.
         let brances = Branch::all_branches();
         for branch in brances.into_iter() {
@@ -325,17 +314,22 @@ fn gen_games() -> BTreeMap<(String, u8), (Decimal, Decimal)> {
                 );
             }
         }
+        let bb = time.elapsed().as_secs();
+        let ccc = bb - aa;
+        debug_time_summ2 += ccc;
     }
     if DEBUG_REAL_MODE {
         println!("---------{:?}--------", fakes_count);
-        for (fake, graph) in fakes_graphs {
+        for (fake, graph) in &fakes_graphs {
             println!("---------{:?}--------", fake);
-            GraphPoint::print_graph(&graph);
+            GraphPoint::print_graph(graph);
         }
     }
 
+    println!("Seconds for fakes: {}", debug_time_summ);
+    println!("Seconds for game: {}", debug_time_summ2);
     println!("Seconds gone: {}", time.elapsed().as_secs());
-    all_fakes
+    fakes_graphs
 }
 
 fn update_win_in_graf(
@@ -1298,4 +1292,91 @@ fn rnd_one_positions_not_folded(init_game: &impl Game) -> Position {
             return pose;
         }
     }
+}
+fn gen_serde_games_river() {
+    let mut fakes_count = HashMap::new();
+    let mut serde_river = HashMap::new();
+    let mut fakes = HashSet::new();
+    let mut cc = 0_usize;
+    loop {
+        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() > 100 {
+            break;
+        }
+        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() > cc {
+            println!("{cc}");
+            cc = *fakes_count.values().min().unwrap();
+        }
+        // Create a new game with full random, except the spr for now.
+        let lock_cards = vec![];
+        let spr = dec!(200);
+        let config = syntetic_river(&lock_cards, spr);
+
+        let mut river_game: PostflopGame = config.game;
+        let prev_agr_pose = config.prev_agr_pose;
+        let ch_board_str = config.ch_board_str;
+
+        let specific_board = true;
+
+        let real_player_hand = Hand::rnd_hand(&river_game.cards);
+
+        // Tuple for serde
+        let mut tuples = vec![];
+
+        // Calculate the fakes for the new game.
+        let mut min_count_fake = usize::MAX;
+        Position::all_poses()
+            .iter()
+            .filter(|&pos| !river_game.folded_positions().contains(&pos))
+            .for_each(|&pos| {
+                let player = river_game.player_by_position_as_ref(pos);
+                let combination = real_comb(&player.hand, &river_game.cards);
+
+                let fake_hand = FakePostflopHand {
+                    ready: fake_comb_side_ready(&player.hand, combination, &river_game.cards),
+                    flash_draw: fake_comb_side_fd(&player.hand, combination, &river_game.cards),
+                    street_draw: fake_comb_side_sd(&player.hand, combination, &river_game.cards),
+                };
+
+                let blockers =
+                    Utils::we_have_blockers(&player.hand.cards, &config.fake_board, &river_game);
+
+                let fake = FakePostflopNew {
+                    // river: 4*15*2*2*3*3=2160
+                    fake_board: config.fake_board,
+                    my_fake_hand: fake_hand,
+                    blockers,
+                    ch_board_str,
+                    prev_agr: AgroStreet::calculate(&prev_agr_pose, pos),
+                    spr: Spr::from(spr),
+                };
+                // serde
+                tuples.push((fake.clone(), pos, combination));
+                fakes.insert(fake.clone());
+
+                fakes_count
+                    .entry(fake.clone())
+                    .and_modify(|val| *val += 1)
+                    .or_insert(1_usize);
+                min_count_fake = min_count_fake.min(*fakes_count.get(&fake).unwrap());
+            });
+        if min_count_fake <= 100 {
+            let river_json_str = serde_json::to_string(&river_game).unwrap();
+            if let Some(_) = serde_river.insert(river_json_str, tuples) {
+                println!("Duble river: {:?}", river_game);
+            };
+        }
+    }
+    let file_name = format!("river_fake_and_game.txt");
+    let content_json_str = serde_json::to_string(&serde_river).unwrap();
+    write_to_file(content_json_str, &file_name);
+
+    let file_name = format!("river_fakes.txt");
+    let content_json_str = serde_json::to_string(&fakes).unwrap();
+    write_to_file(content_json_str, &file_name);
+}
+
+fn write_to_file(content: String, file_name: &str) -> std::io::Result<()> {
+    let mut f = std::fs::File::create(file_name)?;
+    f.write_all(content.as_bytes())?;
+    Ok(())
 }

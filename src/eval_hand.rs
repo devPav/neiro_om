@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     fmt::Debug,
@@ -5,7 +6,7 @@ use std::{
 
 use crate::{Card, Hand, Rank, MAP_INLINE_REALCOMB};
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum ReadyHand {
     HightCards(Rank, Rank, Rank, Rank, Rank),
     OnePair {

@@ -2,6 +2,7 @@ use crate::{player, Card, Game, Hand, Player, Position};
 use rand::Rng;
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     fmt::Debug,
@@ -39,7 +40,7 @@ impl ActionKind {
         //rand::random()
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Pot {
     pub value: Decimal,
     pub members: Vec<Position>,
