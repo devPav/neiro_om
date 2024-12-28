@@ -35,7 +35,7 @@ use std::{
 };
 
 static DEBUG_REAL_MODE: bool = false;
-static DEBUG_FAKE_MODE: bool = false;
+static DEBUG_GRAPHS: bool = true;
 
 static mut GLOBAL_GENERATION: u8 = 0;
 
@@ -74,8 +74,8 @@ fn main() {
     // fakeboard::inline_real_combination();
     // thread::available_parallelism() = 12
     // gen_serde_games_river();
-    check_games();
-    std::process::exit(0);
+    // check_games();
+    // std::process::exit(0);
 
     let args = Args::parse();
 
@@ -173,11 +173,8 @@ fn gen_multithread_preflop_postflop_games(workers_count: u8) {
 fn gen_games() -> HashMap<FakePostflopNew, Vec<GraphPoint>> {
     let mut con = RedisUtils::connect().unwrap();
     // (Ключ, действие)(накапливаем сумму результатов, накапливаем счетчик когда встречалось=количество розыгрышей)
-    let mut all_fakes: BTreeMap<(String, u8), (Decimal, Decimal)> = BTreeMap::new();
     let time = Instant::now();
 
-    let mut debug_time_summ = 0;
-    let mut debug_time_summ2 = 0;
     // let mut map_end = HashMap::new();
     // Тут я должен рандомить 2160 стартовых ситуаций ривера. Но пока захардкорю одну.
     // let lock_cards = vec![
@@ -191,97 +188,43 @@ fn gen_games() -> HashMap<FakePostflopNew, Vec<GraphPoint>> {
     //     Card::from_string_ui("5s".to_string()),
     //     Card::from_string_ui("2h".to_string()),
     // ];
+    let mut file = std::fs::File::open("river_fake_and_game.txt").unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    let games_str: HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>> =
+        serde_json::from_str(&contents).unwrap();
+    println!("Count of river games: {}", games_str.len());
+
+    let mut file = std::fs::File::open("river_fakes.txt").unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    let fakes: HashSet<FakePostflopNew> = serde_json::from_str(&contents).unwrap();
+    println!("Count of fakes: {}", fakes.len());
+
     let mut fakes_graphs = HashMap::new();
-    let mut fakes_count = HashMap::new();
-    let mut serde_river = HashMap::new();
-    let mut cc = 0_usize;
-    loop {
-        let a = time.elapsed().as_secs();
-        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() > 100 {
-            break;
-        }
-        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() > cc {
-            println!("{cc}");
-            cc = *fakes_count.values().min().unwrap();
-        }
-        // Create a new game with full random, except the spr for now.
-        let lock_cards = vec![];
-        let spr = dec!(200);
-        let config = syntetic_river(&lock_cards, spr);
+    for (river_game_str, vec_situation) in games_str {
+        let river_game: PostflopGame = serde_json::from_str(&river_game_str).unwrap();
+        let first_situation = vec_situation[0].clone();
+        let second_situation = vec_situation[1].clone();
 
-        let mut river_game: PostflopGame = config.game;
-        let prev_agr_pose = config.prev_agr_pose;
-        let ch_board_str = config.ch_board_str;
-
-        let specific_board = true;
-
-        let real_player_hand = Hand::rnd_hand(&river_game.cards);
-
-        // Calculate the fakes for the new game.
         let mut fakes_positions = HashMap::new();
         let mut real_hands_end = HashMap::new();
-        let mut min_count_fake = usize::MAX;
-        Position::all_poses()
-            .iter()
-            .filter(|&pos| !river_game.folded_positions().contains(&pos))
-            .for_each(|&pos| {
-                let player = river_game.player_by_position_as_ref(pos);
-                let combination = real_comb(&player.hand, &river_game.cards);
-                real_hands_end.insert(pos, combination);
 
-                let fake_hand = FakePostflopHand {
-                    ready: fake_comb_side_ready(&player.hand, combination, &river_game.cards),
-                    flash_draw: fake_comb_side_fd(&player.hand, combination, &river_game.cards),
-                    street_draw: fake_comb_side_sd(&player.hand, combination, &river_game.cards),
-                };
+        fakes_positions.insert(first_situation.1, first_situation.0.clone());
+        fakes_positions.insert(second_situation.1, second_situation.0.clone());
 
-                let blockers =
-                    Utils::we_have_blockers(&player.hand.cards, &config.fake_board, &river_game);
+        real_hands_end.insert(first_situation.1, first_situation.2);
+        real_hands_end.insert(second_situation.1, second_situation.2);
 
-                let fake = FakePostflopNew {
-                    // river: 4*15*2*2*3*3=2160
-                    fake_board: config.fake_board,
-                    my_fake_hand: fake_hand,
-                    blockers,
-                    ch_board_str,
-                    prev_agr: AgroStreet::calculate(&prev_agr_pose, pos),
-                    spr: Spr::from(spr),
-                };
-                // serde
-                let fake_string = serde_json::to_string(&fake).unwrap();
-                let pos_string = serde_json::to_string(&pos).unwrap();
-                let key = format!("{}|{}", pos_string, fake_string);
-                serde_river
-                    .entry(key.clone())
-                    .and_modify(|v: &mut Vec<PostflopGame>| v.push(river_game.clone()))
-                    .or_insert(vec![river_game.clone()]);
-                // let s = serde_json::to_string(&serde_river).unwrap();
-                // let f = serde_json::from_str::<HashMap<String, Vec<PostflopGame>>>(&s).unwrap();
-                // let mut ff = HashMap::new();
-                // for (k, v) in f {
-                //     let nk = serde_json::from_str::<FakePostflopNew>(&k).unwrap();
-                //     ff.insert(nk, v.clone());
-                // }
-                //
-                fakes_positions.insert(pos, fake.clone());
-                fakes_count
-                    .entry(fake.clone())
-                    .and_modify(|val| *val += 1)
-                    .or_insert(1_usize);
-                fakes_graphs
-                    .entry(fake.clone())
-                    .or_insert(GraphPoint::get_all_graph_points());
-                min_count_fake = min_count_fake.min(*fakes_count.get(&fake).unwrap());
-            });
-        if min_count_fake > 100 {
-            continue;
-        }
-        let b = time.elapsed().as_secs();
-        let c = b - a;
-        debug_time_summ += c;
+        // Подготавливаем итоговый граф раздачи.
+        fakes_graphs
+            .entry(first_situation.0.clone())
+            .or_insert(GraphPoint::get_all_graph_points());
+        fakes_graphs
+            .entry(second_situation.0.clone())
+            .or_insert(GraphPoint::get_all_graph_points());
 
-        let aa = time.elapsed().as_secs();
-        // На 0-м поколении разыграю по одному разу все возможные ветки, по которым может пройти раздача.
+        // Играем все ветки по этой раздаче.
         let brances = Branch::all_branches();
         for branch in brances.into_iter() {
             let mut real_hands_end_current = real_hands_end.clone();
@@ -308,29 +251,22 @@ fn gen_games() -> HashMap<FakePostflopNew, Vec<GraphPoint>> {
             if DEBUG_REAL_MODE {
                 println!("{:?}", winners);
             }
-            if DEBUG_REAL_MODE {
-                update_win_in_graf(
-                    &nodes_by_poses,
-                    &fakes_positions,
-                    &winners,
-                    &mut fakes_graphs,
-                );
-            }
+            update_win_in_graf(
+                &nodes_by_poses,
+                &fakes_positions,
+                &winners,
+                &mut fakes_graphs,
+            );
         }
-        let bb = time.elapsed().as_secs();
-        let ccc = bb - aa;
-        debug_time_summ2 += ccc;
     }
-    if DEBUG_REAL_MODE {
-        println!("---------{:?}--------", fakes_count);
+
+    if DEBUG_GRAPHS {
         for (fake, graph) in &fakes_graphs {
             println!("---------{:?}--------", fake);
             GraphPoint::print_graph(graph);
         }
     }
 
-    println!("Seconds for fakes: {}", debug_time_summ);
-    println!("Seconds for game: {}", debug_time_summ2);
     println!("Seconds gone: {}", time.elapsed().as_secs());
     fakes_graphs
 }
@@ -797,13 +733,13 @@ fn play_river(
             break;
         };
         let possible_act = action::possible_action_kind(river_game, position);
-        let act = Node::action_from_node(node, river_game.main_pot.value, &possible_act);
-
         if !river_game.folded_positions().contains(&position) && possible_act.is_empty() {
             /* Если по какой-то причине пустой набор вариантов возможных действий, то это паника в селе, спятил дед
              */
-            panic!("Empty possible actions");
+            break;
         }
+        let act = Node::action_from_node(node, river_game.main_pot.value, &possible_act);
+
         if possible_act.is_empty() {
             /* Так как это не конец игры, значит пустой набор возможных действий означает, что эта
             позиция либо в алине либо в фолде.
@@ -1297,6 +1233,8 @@ fn rnd_one_positions_not_folded(init_game: &impl Game) -> Position {
     }
 }
 fn gen_serde_games_river() {
+    let mut rnd = rand::thread_rng();
+
     let mut fakes_count = HashMap::new();
     let mut serde_river = HashMap::new();
     let mut fakes = HashSet::new();
@@ -1311,7 +1249,12 @@ fn gen_serde_games_river() {
         }
         // Create a new game with full random, except the spr for now.
         let lock_cards = vec![];
-        let spr = dec!(200);
+        let spr = match rnd.gen_range(0..=2u8) {
+            0 => dec!(200),
+            1 => dec!(53),
+            2 => dec!(20),
+            _ => unreachable!(),
+        };
         let config = syntetic_river(&lock_cards, spr);
 
         let mut river_game: PostflopGame = config.game;
@@ -1405,32 +1348,48 @@ fn check_games() -> std::io::Result<()> {
             .collect::<HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>>>();
         println!("Fake: {:?} Games: {}", fake, games_for_fake.len());
 
-        if fake.blockers == false
-            && fake.fake_board == FakeBoardNew::StreetNoFlashNoPair
-            && fake.my_fake_hand.ready == FakePostReadyHand::NutStreet
-        {
-            for g in &games_for_fake {
-                let game: PostflopGame = serde_json::from_str(g.0).unwrap();
-                println!("b: {:?}", game.cards);
-                let player = game.player_by_position_as_ref(g.1[0].1);
-                println!("p1: {:?}", player.hand);
-                let player = game.player_by_position_as_ref(g.1[1].1);
-                println!("p2: {:?}", player.hand);
+        let mut map_count = HashMap::new();
+        for (_, v) in &games_for_fake {
+            if v[0].0 == *fake {
+                map_count
+                    .entry(v[1].0.clone())
+                    .and_modify(|val| *val += 1usize)
+                    .or_insert(1usize);
+            } else {
+                map_count
+                    .entry(v[0].0.clone())
+                    .and_modify(|val| *val += 1usize)
+                    .or_insert(1usize);
             }
         }
-        if fake.blockers == true
-            && fake.fake_board == FakeBoardNew::StreetNoFlashNoPair
-            && fake.my_fake_hand.ready == FakePostReadyHand::NutStreet
-        {
-            for g in &games_for_fake {
-                let game: PostflopGame = serde_json::from_str(g.0).unwrap();
-                println!("b: {:?}", game.cards);
-                let player = game.player_by_position_as_ref(g.1[0].1);
-                println!("p1: {:?}", player.hand);
-                let player = game.player_by_position_as_ref(g.1[1].1);
-                println!("p2: {:?}", player.hand);
-            }
-        }
+        // println!("Enemies: {:?}", map_count);
+
+        // if fake.blockers == false
+        //     && fake.fake_board == FakeBoardNew::StreetNoFlashNoPair
+        //     && fake.my_fake_hand.ready == FakePostReadyHand::NutStreet
+        // {
+        //     for g in &games_for_fake {
+        //         let game: PostflopGame = serde_json::from_str(g.0).unwrap();
+        //         println!("b: {:?}", game.cards);
+        //         let player = game.player_by_position_as_ref(g.1[0].1);
+        //         println!("p1: {:?}", player.hand);
+        //         let player = game.player_by_position_as_ref(g.1[1].1);
+        //         println!("p2: {:?}", player.hand);
+        //     }
+        // }
+        // if fake.blockers == true
+        //     && fake.fake_board == FakeBoardNew::StreetNoFlashNoPair
+        //     && fake.my_fake_hand.ready == FakePostReadyHand::NutStreet
+        // {
+        //     for g in &games_for_fake {
+        //         let game: PostflopGame = serde_json::from_str(g.0).unwrap();
+        //         println!("b: {:?}", game.cards);
+        //         let player = game.player_by_position_as_ref(g.1[0].1);
+        //         println!("p1: {:?}", player.hand);
+        //         let player = game.player_by_position_as_ref(g.1[1].1);
+        //         println!("p2: {:?}", player.hand);
+        //     }
+        // }
     }
 
     Ok(())

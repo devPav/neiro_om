@@ -354,16 +354,20 @@ impl Node {
 }
 
 fn find_max_raise(possible_act: &Vec<ActionKind>) -> ActionKind {
-    *possible_act
-        .iter()
-        .find(|&&act| {
-            if let ActionKind::Raise(_) = act {
-                true
-            } else {
-                false
-            }
-        })
-        .unwrap()
+    // Для спр дип все стек и пот подобраны таким образом, что всегда будет полная ветка,
+    // а вот для мидл и для лоу есть недоступные продолжения и по логике это всегда ветки за рейзом
+    // поэтому если нет возможности сыграть рейз, то просто выбираю вместо него колл
+    if let Some(&act) = possible_act.iter().find(|&&act| {
+        if let ActionKind::Raise(_) = act {
+            true
+        } else {
+            false
+        }
+    }) {
+        act
+    } else {
+        find_call_not_aicall(possible_act)
+    }
 }
 
 fn find_call_not_aicall(possible_act: &Vec<ActionKind>) -> ActionKind {

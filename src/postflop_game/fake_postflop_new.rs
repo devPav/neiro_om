@@ -16,7 +16,7 @@ impl Spr {
     pub fn from(val: Decimal) -> Self {
         match val {
             c if c == dec!(200) => Self::Deep,
-            c if c == dec!(100) => Self::Middle,
+            c if c == dec!(53) => Self::Middle,
             c if c == dec!(20) => Self::Low,
             _ => unreachable!(),
         }
