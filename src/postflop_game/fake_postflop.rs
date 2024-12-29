@@ -207,7 +207,7 @@ impl Display for FakeSituation {
 }
 
 // Board struct
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum FakeSuitPostFlop {
     Flash,        // flop + turn + river
     TwoFlashDraw, //        turn
@@ -239,7 +239,7 @@ impl FakeSuitPostFlop {
         }
     }
 }
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum FakeStreet {
     // Количество дырок. Равно (max-min)-1
     Street,        // flop + turn + river
@@ -403,7 +403,11 @@ impl FakePostflopPause {
                 flash_draw: FakePostflopFD::Low,
                 street_draw: FakePostflopSD::Nothing,
             },
-            fake_board: FakeBoardNew::NoSpecial,
+            fake_board: FakeBoardNew {
+                suit_kind: FakeSuitPostFlop::Rainbow,
+                street_kind: FakeStreet::Dry,
+                paired: false,
+            },
             situation: FakeSituationNew {
                 action: FakeActionNew::StartOpp,
                 spr: FakeSpr::Deep,
@@ -428,11 +432,10 @@ impl Utils {
         let suit_kind = Self::suit_kind_board(game);
         let street_kind = Self::street_kind_board(&game.cards);
         let paired = Self::paired(game);
-        match (paired, suit_kind, street_kind) {
-            (true, _, _) => FakeBoardNew::Pair,
-            (false, FakeSuitPostFlop::Flash, _) => FakeBoardNew::FlashNoPair,
-            (false, _, FakeStreet::Street) => FakeBoardNew::StreetNoFlashNoPair,
-            _ => FakeBoardNew::NoSpecial,
+        FakeBoardNew {
+            suit_kind,
+            street_kind,
+            paired,
         }
     }
     pub fn fake_flop_board_inline(
@@ -597,7 +600,11 @@ impl Utils {
         game: &PostflopGame,
     ) -> bool {
         match fake_board {
-            FakeBoardNew::FlashNoPair => {
+            FakeBoardNew {
+                suit_kind: FakeSuitPostFlop::Flash,
+                street_kind,
+                paired: false,
+            } => {
                 let flash_blocker = game.flash_blockers_to_board();
                 if let Some(card) = flash_blocker {
                     let count_of_suit = player_cards.iter().filter(|c| c.suit == card.suit).count();
@@ -606,7 +613,15 @@ impl Utils {
                     false
                 }
             }
-            FakeBoardNew::StreetNoFlashNoPair => {
+            FakeBoardNew {
+                suit_kind:
+                    FakeSuitPostFlop::TwoFlashDraw
+                    | FakeSuitPostFlop::OneFlashDraw
+                    | FakeSuitPostFlop::Rainbow
+                    | FakeSuitPostFlop::NoFlashRiver,
+                street_kind: FakeStreet::Street,
+                paired: false,
+            } => {
                 // Длина вектора всегда 2.
                 let street_blockers = game.street_blockers_to_board();
                 if let Some(v) = street_blockers {
@@ -939,32 +954,27 @@ impl Display for FakeActionNew {
     }
 }
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
-pub enum FakeBoardNew {
-    Pair,
-    FlashNoPair,
-    StreetNoFlashNoPair,
-    NoSpecial,
+pub struct FakeBoardNew {
+    pub suit_kind: FakeSuitPostFlop,
+    pub street_kind: FakeStreet,
+    pub paired: bool,
 }
 impl Debug for FakeBoardNew {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            FakeBoardNew::Pair => "Pair".to_string(),
-            FakeBoardNew::FlashNoPair => "Flash_nP".to_string(),
-            FakeBoardNew::StreetNoFlashNoPair => "Street_nF_nP".to_string(),
-            FakeBoardNew::NoSpecial => "Common".to_string(),
-        };
-        write!(f, "{}", s)
+        write!(
+            f,
+            "suit: {:?}; street: {:?}; paired: {}",
+            self.suit_kind, self.street_kind, self.paired
+        )
     }
 }
 impl Display for FakeBoardNew {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            FakeBoardNew::Pair => "P".to_string(),
-            FakeBoardNew::FlashNoPair => "F_nP".to_string(),
-            FakeBoardNew::StreetNoFlashNoPair => "S_nF_nP".to_string(),
-            FakeBoardNew::NoSpecial => "Com".to_string(),
-        };
-        write!(f, "{}", s)
+        write!(
+            f,
+            "({:?},{:?},{})",
+            self.suit_kind, self.street_kind, self.paired
+        )
     }
 }
 

@@ -8,8 +8,10 @@ use neiro_om::{
     inline::fakeboard,
     postflop_game::{
         eval_fake_hand::{fake_comb_side_fd, fake_comb_side_ready, fake_comb_side_sd},
-        fake_postflop::{AgroStreet, FakeBoardNew, FakePostflopHand, PotentialFE, Utils},
-        FakeBoard, FakePostflopPause, PostflopGame,
+        fake_postflop::{
+            AgroStreet, FakeBoardNew, FakePostflopHand, FakeSuitPostFlop, PotentialFE, Utils,
+        },
+        FakeBoard, FakePostflopPause, FakeStreet, PostflopGame,
     },
     preflop_game,
     redis::{RedisStreet, RedisUtils},
@@ -73,7 +75,7 @@ fn main() {
     );
     // fakeboard::inline_real_combination();
     // thread::available_parallelism() = 12
-    // gen_serde_games_river();
+    // gen_multithread_serde_games(10);
     // check_games();
     // std::process::exit(0);
 
@@ -86,7 +88,7 @@ fn main() {
         GLOBAL_GENERATION = args.generation_arg;
     }
     for _ in 1..=args.count {
-        gen_multithread_preflop_postflop_games(1);
+        gen_multithread_preflop_postflop_games(10);
         unsafe {
             GLOBAL_GENERATION += 1;
         }
@@ -139,11 +141,23 @@ fn _print_details_preflop(map: HashMap<FakePostflopNew, Vec<GraphPoint>>) {
     println!("{:?}", hagro);
 }
 fn gen_multithread_preflop_postflop_games(workers_count: u8) {
-    // (Ключ, действие)(накапливаем сумму результатов, накапливаем счетчик когда встречалось=количество розыгрышей)
+    // Считаю мапу со всеми играми.
+    let mut file = std::fs::File::open("river_fake_and_game.txt").unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    let games_str: HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>> =
+        serde_json::from_str(&contents).unwrap();
+    println!("Count of river games inlined: {}", games_str.len());
+
     let mut result: HashMap<FakePostflopNew, Vec<GraphPoint>> = HashMap::new();
+
+    // Разобью общий список играемых рук на "workers_count" списков
+    let mut lists = split(games_str, workers_count);
+
     let mut handles = Vec::new();
     for _ in 1..=workers_count {
-        let handle = thread::spawn(|| gen_games());
+        let cur_map = lists.split_off(lists.len() - 1)[0].clone();
+        let handle = thread::spawn(|| gen_games(cur_map));
         handles.push(handle);
     }
     for handle in handles {
@@ -168,12 +182,67 @@ fn gen_multithread_preflop_postflop_games(workers_count: u8) {
     // if let RedisResult::Err(_) = RedisUtils::write_to_redis(&result, &file_name) {
     //     panic!("err write to redis")
     // }
+    if DEBUG_GRAPHS {
+        for (fake, graph) in &result {
+            println!("---------{:?}--------", fake);
+            GraphPoint::print_graph(graph);
+        }
+    }
     _print_details_preflop(result);
 }
-fn gen_games() -> HashMap<FakePostflopNew, Vec<GraphPoint>> {
+
+fn split(
+    games_str: HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>>,
+    workers_count: u8,
+) -> Vec<HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>>> {
+    let mut result = Vec::with_capacity(11);
+
+    let mut vec = games_str.into_iter().collect::<Vec<_>>();
+    let step_size = vec.len() / workers_count as usize;
+    for _ in 1..workers_count {
+        let vec2 = vec.split_off(vec.len() - step_size);
+        let mut map = HashMap::new();
+        for (k, v) in vec2 {
+            if let Some(_) = map.insert(k, v) {
+                unreachable!()
+            }
+        }
+        result.push(map);
+    }
+    let mut map = HashMap::new();
+    for (k, v) in vec {
+        if let Some(_) = map.insert(k, v) {
+            unreachable!()
+        }
+    }
+    result.push(map);
+    result
+}
+fn gen_multithread_serde_games(workers_count: u8) {
+    // (Ключ, действие)(накапливаем сумму результатов, накапливаем счетчик когда встречалось=количество розыгрышей)
+    let mut result = HashMap::new();
+    let mut handles = Vec::new();
+    for _ in 1..=workers_count {
+        let handle = thread::spawn(|| gen_serde_games_river());
+        handles.push(handle);
+    }
+    for handle in handles {
+        let map_spawn = handle.join().unwrap();
+        for (k, v) in map_spawn {
+            if let Some(_) = result.insert(k, v) {
+                println!("Duble river");
+            };
+        }
+    }
+    let file_name = format!("river_fake_and_game.txt");
+    let content_json_str = serde_json::to_string(&result).unwrap();
+    write_to_file(content_json_str, &file_name);
+}
+fn gen_games(
+    games_str: HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>>,
+) -> HashMap<FakePostflopNew, Vec<GraphPoint>> {
     let mut con = RedisUtils::connect().unwrap();
     // (Ключ, действие)(накапливаем сумму результатов, накапливаем счетчик когда встречалось=количество розыгрышей)
-    let time = Instant::now();
 
     // let mut map_end = HashMap::new();
     // Тут я должен рандомить 2160 стартовых ситуаций ривера. Но пока захардкорю одну.
@@ -188,19 +257,9 @@ fn gen_games() -> HashMap<FakePostflopNew, Vec<GraphPoint>> {
     //     Card::from_string_ui("5s".to_string()),
     //     Card::from_string_ui("2h".to_string()),
     // ];
-    let mut file = std::fs::File::open("river_fake_and_game.txt").unwrap();
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    let games_str: HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>> =
-        serde_json::from_str(&contents).unwrap();
-    println!("Count of river games: {}", games_str.len());
+    println!("Thread river games inlined: {}", games_str.len());
 
-    let mut file = std::fs::File::open("river_fakes.txt").unwrap();
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    let fakes: HashSet<FakePostflopNew> = serde_json::from_str(&contents).unwrap();
-    println!("Count of fakes: {}", fakes.len());
-
+    let time = Instant::now();
     let mut fakes_graphs = HashMap::new();
     for (river_game_str, vec_situation) in games_str {
         let river_game: PostflopGame = serde_json::from_str(&river_game_str).unwrap();
@@ -257,13 +316,6 @@ fn gen_games() -> HashMap<FakePostflopNew, Vec<GraphPoint>> {
                 &winners,
                 &mut fakes_graphs,
             );
-        }
-    }
-
-    if DEBUG_GRAPHS {
-        for (fake, graph) in &fakes_graphs {
-            println!("---------{:?}--------", fake);
-            GraphPoint::print_graph(graph);
         }
     }
 
@@ -1119,7 +1171,8 @@ fn syntetic_river(lock_cards: &Vec<Card>, spr: Decimal) -> ConfigPostflop {
 
     let fake_board = Utils::new_fake_flop_board(&river_game);
     let prev_fake_board = Utils::new_fake_flop_board(&turn_game);
-    let ch_board_str = fake_board != prev_fake_board;
+    // let ch_board_str = fake_board != prev_fake_board;
+    let ch_board_str = cacl_change_board(fake_board, prev_fake_board);
 
     let prev_agr_pose = modify_game_ml(&mut river_game, spr);
     ConfigPostflop {
@@ -1128,6 +1181,32 @@ fn syntetic_river(lock_cards: &Vec<Card>, spr: Decimal) -> ConfigPostflop {
         prev_agr_pose,
         fake_board,
     }
+}
+
+fn cacl_change_board(fake_board: FakeBoardNew, prev_fake_board: FakeBoardNew) -> bool {
+    if prev_fake_board.paired {
+        return false;
+    }
+    // Ниже предыдущий борд всегда неспаренный.
+    if fake_board.paired {
+        return true;
+    }
+    // Ниже все борды всегда неспаренные.
+
+    if prev_fake_board.suit_kind != FakeSuitPostFlop::Flash
+        && fake_board.suit_kind != FakeSuitPostFlop::Flash
+    {
+        return true;
+    }
+
+    if prev_fake_board.suit_kind != FakeSuitPostFlop::Flash
+        && prev_fake_board.street_kind != FakeStreet::Street
+        && fake_board.street_kind == FakeStreet::Street
+    {
+        return true;
+    }
+
+    false
 }
 fn temporary_modify_river(init_game: &mut PostflopGame, position_real_player: &Position) {
     // SORTED !!!
@@ -1232,21 +1311,23 @@ fn rnd_one_positions_not_folded(init_game: &impl Game) -> Position {
         }
     }
 }
-fn gen_serde_games_river() {
+fn gen_serde_games_river() -> HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>> {
     let mut rnd = rand::thread_rng();
 
     let mut fakes_count = HashMap::new();
     let mut serde_river = HashMap::new();
     let mut fakes = HashSet::new();
+
+    let count_of_games_min = 100;
     let mut cc = 0_usize;
     loop {
-        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() > 100 {
+        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() > count_of_games_min {
             break;
         }
-        if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() > cc {
-            println!("{cc}");
-            cc = *fakes_count.values().min().unwrap();
-        }
+        // if !fakes_count.is_empty() && *fakes_count.values().min().unwrap() > cc {
+        //     println!("{cc}");
+        //     cc = *fakes_count.values().min().unwrap();
+        // }
         // Create a new game with full random, except the spr for now.
         let lock_cards = vec![];
         let spr = match rnd.gen_range(0..=2u8) {
@@ -1305,20 +1386,19 @@ fn gen_serde_games_river() {
                     .or_insert(1_usize);
                 min_count_fake = min_count_fake.min(*fakes_count.get(&fake).unwrap());
             });
-        if min_count_fake <= 100 {
+        if min_count_fake <= count_of_games_min {
             let river_json_str = serde_json::to_string(&river_game).unwrap();
             if let Some(_) = serde_river.insert(river_json_str, tuples) {
                 println!("Duble river: {:?}", river_game);
             };
         }
     }
-    let file_name = format!("river_fake_and_game.txt");
-    let content_json_str = serde_json::to_string(&serde_river).unwrap();
-    write_to_file(content_json_str, &file_name);
 
     let file_name = format!("river_fakes.txt");
     let content_json_str = serde_json::to_string(&fakes).unwrap();
     write_to_file(content_json_str, &file_name);
+
+    serde_river
 }
 
 fn write_to_file(content: String, file_name: &str) -> std::io::Result<()> {
@@ -1348,20 +1428,20 @@ fn check_games() -> std::io::Result<()> {
             .collect::<HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>>>();
         println!("Fake: {:?} Games: {}", fake, games_for_fake.len());
 
-        let mut map_count = HashMap::new();
-        for (_, v) in &games_for_fake {
-            if v[0].0 == *fake {
-                map_count
-                    .entry(v[1].0.clone())
-                    .and_modify(|val| *val += 1usize)
-                    .or_insert(1usize);
-            } else {
-                map_count
-                    .entry(v[0].0.clone())
-                    .and_modify(|val| *val += 1usize)
-                    .or_insert(1usize);
-            }
-        }
+        // let mut map_count = HashMap::new();
+        // for (_, v) in &games_for_fake {
+        //     if v[0].0 == *fake {
+        //         map_count
+        //             .entry(v[1].0.clone())
+        //             .and_modify(|val| *val += 1usize)
+        //             .or_insert(1usize);
+        //     } else {
+        //         map_count
+        //             .entry(v[0].0.clone())
+        //             .and_modify(|val| *val += 1usize)
+        //             .or_insert(1usize);
+        //     }
+        // }
         // println!("Enemies: {:?}", map_count);
 
         // if fake.blockers == false
