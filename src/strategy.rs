@@ -3,12 +3,13 @@ use std::str::FromStr;
 
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
+use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, EnumString};
 
 use crate::ActionKind;
 
-#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub struct GraphPoint {
     pub node: Node,
     pub hands: usize,
@@ -191,7 +192,20 @@ fn get_vals(node: Node, points: &Vec<GraphPoint>) -> (usize, Decimal) {
         .unwrap()
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, EnumIter, EnumString)]
+#[derive(
+    Debug,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Hash,
+    Clone,
+    Copy,
+    EnumIter,
+    EnumString,
+    Serialize,
+    Deserialize,
+)]
 pub enum Node {
     // 57
     X,
@@ -274,7 +288,7 @@ impl Node {
                 continue;
             } else {
                 let index = branch.path.iter().position(|n| n == self).unwrap();
-                let node = *branch.path.get(index).unwrap();
+                let node = *branch.path.get(index + 1).unwrap();
                 if !result.contains(&node) {
                     result.push(node);
                 }

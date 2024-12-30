@@ -6,7 +6,7 @@ use std::fmt::{Debug, Display};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum Spr {
     Deep,   // In neiro = 10
     Middle, // from 1 to 2. In neiro = 5

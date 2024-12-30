@@ -37,7 +37,7 @@ use std::{
 };
 
 static DEBUG_REAL_MODE: bool = false;
-static DEBUG_GRAPHS: bool = true;
+static DEBUG_GRAPHS: bool = false;
 
 static mut GLOBAL_GENERATION: u8 = 0;
 
@@ -106,7 +106,7 @@ fn allin_count(game: &PreflopGame) -> u8 {
             }
         })
 }
-fn _print_details_preflop(map: HashMap<FakePostflopNew, Vec<GraphPoint>>) {
+fn _print_details_preflop(map: &HashMap<FakePostflopNew, Vec<GraphPoint>>) {
     let mut hand = HashSet::new();
     let mut board = HashSet::new();
     let mut spr = HashSet::new();
@@ -188,7 +188,22 @@ fn gen_multithread_preflop_postflop_games(workers_count: u8) {
             GraphPoint::print_graph(graph);
         }
     }
-    _print_details_preflop(result);
+    _print_details_preflop(&result);
+    serde_result(result);
+}
+
+fn serde_result(result: HashMap<FakePostflopNew, Vec<GraphPoint>>) {
+    let generation = unsafe { GLOBAL_GENERATION };
+    let mut new_map = HashMap::new();
+    for (k, v) in result {
+        let k_str = serde_json::to_string(&k).unwrap();
+        if let Some(_) = new_map.insert(k_str, v) {
+            println!("Doubled");
+        }
+    }
+    let content_json_str = serde_json::to_string(&new_map).unwrap();
+    let file_name = format!("b_river_{}.txt", generation);
+    write_to_file(content_json_str, &file_name);
 }
 
 fn split(
