@@ -256,23 +256,14 @@ fn gen_multithread_serde_games(workers_count: u8) {
 fn gen_games(
     games_str: HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>>,
 ) -> HashMap<FakePostflopNew, Vec<GraphPoint>> {
-    let mut con = RedisUtils::connect().unwrap();
-    // (Ключ, действие)(накапливаем сумму результатов, накапливаем счетчик когда встречалось=количество розыгрышей)
-
-    // let mut map_end = HashMap::new();
-    // Тут я должен рандомить 2160 стартовых ситуаций ривера. Но пока захардкорю одну.
-    // let lock_cards = vec![
-    //     Card::from_string_ui("Ts".to_string()),
-    //     Card::from_string_ui("2s".to_string()),
-    //     Card::from_string_ui("9c".to_string()),
-    //     Card::from_string_ui("Kc".to_string()),
-    //     Card::from_string_ui("Ac".to_string()),
-    //     Card::from_string_ui("Js".to_string()),
-    //     Card::from_string_ui("Qh".to_string()),
-    //     Card::from_string_ui("5s".to_string()),
-    //     Card::from_string_ui("2h".to_string()),
-    // ];
+    let cur_gen = unsafe { GLOBAL_GENERATION };
     println!("Thread river games inlined: {}", games_str.len());
+
+    let prev_gen_graphs = if cur_gen == 0 {
+        None
+    } else {
+        Some(read_graph(cur_gen))
+    };
 
     let time = Instant::now();
     let mut fakes_graphs = HashMap::new();
@@ -298,17 +289,52 @@ fn gen_games(
             .entry(second_situation.0.clone())
             .or_insert(GraphPoint::get_all_graph_points());
 
-        // Играем все ветки по этой раздаче.
-        let brances = Branch::all_branches();
-        for branch in brances.into_iter() {
+        if cur_gen == 0 {
+            // Играем все ветки по этой раздаче. Для поколения 0.
+            let brances = Branch::all_branches();
+            for branch in brances.into_iter() {
+                let mut real_hands_end_current = real_hands_end.clone();
+                let mut river_game_current = river_game.clone();
+                // Непосредственная игра по ветке.
+                let nodes_by_poses = play_river(
+                    Some(branch),
+                    &mut river_game_current,
+                    &mut real_hands_end_current,
+                    &fakes_positions,
+                    &prev_gen_graphs,
+                );
+                // Расчет результата розигрыша по ветке.
+                // println!("real_hands_end {:?}", real_hands_end);
+                let winners = eval_result::eval_clear_win_loose(
+                    vec![
+                        // preflop_game.positions_and_money,
+                        // flop_game.positions_and_money,
+                        // turn_game.positions_and_money,
+                        river_game_current.positions_and_money.clone(),
+                    ],
+                    &real_hands_end_current,
+                    Some(river_game_current.main_pot.prev_street_end_size),
+                );
+                if DEBUG_REAL_MODE {
+                    println!("{:?}", winners);
+                }
+                update_win_in_graf(
+                    &nodes_by_poses,
+                    &fakes_positions,
+                    &winners,
+                    &mut fakes_graphs,
+                );
+            }
+        } else {
             let mut real_hands_end_current = real_hands_end.clone();
             let mut river_game_current = river_game.clone();
             // Непосредственная игра по ветке.
             let nodes_by_poses = play_river(
-                branch,
+                None,
                 &mut river_game_current,
                 &mut real_hands_end_current,
-                &mut con,
+                &fakes_positions,
+                &prev_gen_graphs,
             );
             // Расчет результата розигрыша по ветке.
             // println!("real_hands_end {:?}", real_hands_end);
@@ -336,6 +362,21 @@ fn gen_games(
 
     println!("Seconds gone: {}", time.elapsed().as_secs());
     fakes_graphs
+}
+
+fn read_graph(cur_gen: u8) -> HashMap<FakePostflopNew, Vec<GraphPoint>> {
+    let filename = format!("b_river_{}.txt", cur_gen);
+    let mut file = std::fs::File::open(filename).unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    let graphs_str: HashMap<String, Vec<GraphPoint>> = serde_json::from_str(&contents).unwrap();
+
+    let mut graphs = HashMap::with_capacity(graphs_str.len() + 10);
+    for (k, v) in graphs_str {
+        let fake: FakePostflopNew = serde_json::from_str(&k).unwrap();
+        graphs.insert(fake, v);
+    }
+    graphs
 }
 
 fn update_win_in_graf(
@@ -758,10 +799,11 @@ fn turn(
     return turn_game;
 }
 fn play_river(
-    branch: Branch,
+    branch: Option<Branch>,
     river_game: &mut PostflopGame,
     real_hands_end: &mut HashMap<Position, ReadyHand>,
-    con: &mut redis::Connection,
+    fakes_positions: &HashMap<Position, FakePostflopNew>,
+    prev_gen_graphs: &Option<HashMap<FakePostflopNew, Vec<GraphPoint>>>,
 ) -> HashMap<Position, Vec<Node>> {
     if DEBUG_REAL_MODE {
         println!("----------RIVER---------");
@@ -780,6 +822,7 @@ fn play_river(
     }
     let mut nodes_by_poses: HashMap<Position, Vec<Node>> = HashMap::new();
     let mut action_count = 0_usize;
+    let mut prev_node = None;
     for &position in poses.iter().cycle() {
         let all_fold_or_allin = river_game
             .positions_and_money()
@@ -796,9 +839,18 @@ fn play_river(
         {
             continue;
         }
-        let Some(&node) = branch.path.get(action_count) else {
-            break;
+        let node = if let Some(branch) = &branch {
+            let Some(&node) = branch.path.get(action_count) else {
+                break;
+            };
+            node
+        } else {
+            let cur_fake = fakes_positions.get(&position).unwrap();
+            let prev_graphs = prev_gen_graphs.clone().unwrap();
+            best_node(cur_fake, prev_node, prev_graphs)
+            // Node::B100
         };
+
         let possible_act = action::possible_action_kind(river_game, position);
         if !river_game.folded_positions().contains(&position) && possible_act.is_empty() {
             /* Если по какой-то причине пустой набор вариантов возможных действий, то это паника в селе, спятил дед
@@ -833,6 +885,7 @@ fn play_river(
         river_game.do_action_on_position(Some(act), position);
 
         action_count += 1;
+        prev_node = Some(node);
         nodes_by_poses
             .entry(position)
             .and_modify(|v| v.push(node))
@@ -848,6 +901,37 @@ fn play_river(
             real_hands_end.remove(&pos);
         });
     nodes_by_poses
+}
+
+fn best_node(
+    cur_fake: &FakePostflopNew,
+    prev_node: Option<Node>,
+    prev_graphs: HashMap<FakePostflopNew, Vec<GraphPoint>>,
+) -> Node {
+    let possible_nodes = if let Some(p_node) = prev_node {
+        p_node.childrens()
+    } else {
+        Node::start_nodes()
+    };
+    let graph = prev_graphs.get(cur_fake).unwrap();
+    graph
+        .iter()
+        .filter(|x| possible_nodes.contains(&x.node))
+        .max_by(|&&x, &&y| {
+            let wr_x = if x.hands != 0 {
+                x.win / Decimal::from(x.hands)
+            } else {
+                Decimal::ZERO
+            };
+            let wr_y = if y.hands != 0 {
+                y.win / Decimal::from(y.hands)
+            } else {
+                Decimal::ZERO
+            };
+            wr_x.cmp(&wr_y)
+        })
+        .unwrap()
+        .node
 }
 #[allow(non_snake_case)]
 fn river(

@@ -365,6 +365,9 @@ impl Node {
     pub fn is_last_node(&self) -> bool {
         self.childrens().is_empty()
     }
+    pub fn start_nodes() -> Vec<Node> {
+        vec![Node::B50, Node::B75, Node::B100, Node::X]
+    }
 }
 
 fn find_max_raise(possible_act: &Vec<ActionKind>) -> ActionKind {
