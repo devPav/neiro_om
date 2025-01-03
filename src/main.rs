@@ -84,11 +84,19 @@ fn main() {
     println!("Start generation: {}!", args.generation_arg);
     println!("Number of times to create new generation: {}!", args.count);
 
+    // Считаю мапу со всеми играми.
+    let mut file = std::fs::File::open("river_fake_and_game.txt").unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    let games_str: HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>> =
+        serde_json::from_str(&contents).unwrap();
+    println!("Count of river games inlined: {}", games_str.len());
+
     unsafe {
         GLOBAL_GENERATION = args.generation_arg;
     }
     for _ in 1..=args.count {
-        gen_multithread_preflop_postflop_games(10);
+        gen_multithread_preflop_postflop_games(10, games_str.clone());
         unsafe {
             GLOBAL_GENERATION += 1;
         }
@@ -140,15 +148,10 @@ fn _print_details_preflop(map: &HashMap<FakePostflopNew, Vec<GraphPoint>>) {
     println!("{:?}", hboard);
     println!("{:?}", hagro);
 }
-fn gen_multithread_preflop_postflop_games(workers_count: u8) {
-    // Считаю мапу со всеми играми.
-    let mut file = std::fs::File::open("river_fake_and_game.txt").unwrap();
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    let games_str: HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>> =
-        serde_json::from_str(&contents).unwrap();
-    println!("Count of river games inlined: {}", games_str.len());
-
+fn gen_multithread_preflop_postflop_games(
+    workers_count: u8,
+    games_str: HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>>,
+) {
     let mut result: HashMap<FakePostflopNew, Vec<GraphPoint>> = HashMap::new();
 
     // Разобью общий список играемых рук на "workers_count" списков
@@ -178,16 +181,12 @@ fn gen_multithread_preflop_postflop_games(workers_count: u8) {
         unsafe { GLOBAL_GENERATION },
         result.len()
     );
-    let file_name = format!("river_{}.txt", unsafe { GLOBAL_GENERATION });
-    // if let RedisResult::Err(_) = RedisUtils::write_to_redis(&result, &file_name) {
-    //     panic!("err write to redis")
+    // if DEBUG_GRAPHS {
+    //     for (fake, graph) in &result {
+    //         println!("---------{:?}--------", fake);
+    //         GraphPoint::print_graph(graph);
+    //     }
     // }
-    if DEBUG_GRAPHS {
-        for (fake, graph) in &result {
-            println!("---------{:?}--------", fake);
-            GraphPoint::print_graph(graph);
-        }
-    }
     _print_details_preflop(&result);
     serde_result(result);
 }
@@ -262,7 +261,7 @@ fn gen_games(
     let prev_gen_graphs = if cur_gen == 0 {
         None
     } else {
-        Some(read_graph(cur_gen))
+        Some(read_graph(cur_gen - 1))
     };
 
     let time = Instant::now();
@@ -348,15 +347,16 @@ fn gen_games(
                 &real_hands_end_current,
                 Some(river_game_current.main_pot.prev_street_end_size),
             );
-            if DEBUG_REAL_MODE {
-                println!("{:?}", winners);
-            }
             update_win_in_graf(
                 &nodes_by_poses,
                 &fakes_positions,
                 &winners,
                 &mut fakes_graphs,
             );
+            if DEBUG_REAL_MODE {
+                println!("{:?}", winners);
+                break;
+            }
         }
     }
 
@@ -823,7 +823,11 @@ fn play_river(
     let mut nodes_by_poses: HashMap<Position, Vec<Node>> = HashMap::new();
     let mut action_count = 0_usize;
     let mut prev_node = None;
+    let mut cyrcle_count = 0_u8;
     for &position in poses.iter().cycle() {
+        if position == Position::Sb {
+            cyrcle_count += 1;
+        }
         let all_fold_or_allin = river_game
             .positions_and_money()
             .iter()
@@ -839,6 +843,29 @@ fn play_river(
         {
             continue;
         }
+
+        let possible_act = action::possible_action_kind(river_game, position);
+        if !river_game.folded_positions().contains(&position) && possible_act.is_empty() {
+            /* Если по какой-то причине пустой набор вариантов возможных действий, то это паника в селе, спятил дед
+             */
+            break;
+        }
+        // Если все кто мог сделать экшн чекнули на постфлопе, то заканчиваем улицу и переходим на следующую.
+        if cyrcle_count > 1 && river_game.no_money_in_game() {
+            if DEBUG_REAL_MODE {
+                println!("All checks who can");
+            }
+            break;
+        }
+        if possible_act.is_empty() {
+            /* Так как это не конец игры, значит пустой набор возможных действий означает, что эта
+            позиция либо в алине либо в фолде.
+            В таком случае игроку не нужно совершать действие => не нужно делать точку принятия решения
+            и записывать в базу.
+             */
+            continue;
+        }
+
         let node = if let Some(branch) = &branch {
             let Some(&node) = branch.path.get(action_count) else {
                 break;
@@ -850,23 +877,7 @@ fn play_river(
             best_node(cur_fake, prev_node, prev_graphs)
             // Node::B100
         };
-
-        let possible_act = action::possible_action_kind(river_game, position);
-        if !river_game.folded_positions().contains(&position) && possible_act.is_empty() {
-            /* Если по какой-то причине пустой набор вариантов возможных действий, то это паника в селе, спятил дед
-             */
-            break;
-        }
         let act = Node::action_from_node(node, river_game.main_pot.value, &possible_act);
-
-        if possible_act.is_empty() {
-            /* Так как это не конец игры, значит пустой набор возможных действий означает, что эта
-            позиция либо в алине либо в фолде.
-            В таком случае игроку не нужно совершать действие => не нужно делать точку принятия решения
-            и записывать в базу.
-             */
-            continue;
-        }
 
         if DEBUG_REAL_MODE {
             let player = river_game.player_by_position_as_ref(position);
@@ -914,6 +925,15 @@ fn best_node(
         Node::start_nodes()
     };
     let graph = prev_graphs.get(cur_fake).unwrap();
+    if DEBUG_GRAPHS {
+        println!("---------{:?}--------", cur_fake);
+        let debg = graph
+            .iter()
+            .cloned()
+            .filter(|x| possible_nodes.contains(&x.node))
+            .collect::<Vec<_>>();
+        println!("{:#?}", debg);
+    }
     graph
         .iter()
         .filter(|x| possible_nodes.contains(&x.node))
