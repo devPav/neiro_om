@@ -40,6 +40,7 @@ static DEBUG_REAL_MODE: bool = false;
 static DEBUG_GRAPHS: bool = false;
 
 static mut GLOBAL_GENERATION: u8 = 0;
+static mut PREV_GRAPH: Option<HashMap<FakePostflopNew, Vec<GraphPoint>>> = None;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -96,6 +97,15 @@ fn main() {
         GLOBAL_GENERATION = args.generation_arg;
     }
     for _ in 1..=args.count {
+        // Считываю граф решений предыдушего поколения.
+        unsafe {
+            PREV_GRAPH = if GLOBAL_GENERATION == 0 {
+                None
+            } else {
+                Some(read_graph(GLOBAL_GENERATION - 1))
+            }
+        };
+
         gen_multithread_preflop_postflop_games(10, games_str.clone());
         unsafe {
             GLOBAL_GENERATION += 1;
@@ -258,11 +268,7 @@ fn gen_games(
     let cur_gen = unsafe { GLOBAL_GENERATION };
     println!("Thread river games inlined: {}", games_str.len());
 
-    let prev_gen_graphs = if cur_gen == 0 {
-        None
-    } else {
-        Some(read_graph(cur_gen - 1))
-    };
+    let prev_gen_graphs = unsafe { &PREV_GRAPH };
 
     let time = Instant::now();
     let mut fakes_graphs = HashMap::new();
@@ -333,7 +339,7 @@ fn gen_games(
                 &mut river_game_current,
                 &mut real_hands_end_current,
                 &fakes_positions,
-                &prev_gen_graphs,
+                prev_gen_graphs,
             );
             // Расчет результата розигрыша по ветке.
             // println!("real_hands_end {:?}", real_hands_end);
