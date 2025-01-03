@@ -1,10 +1,16 @@
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 
-use crate::{AgroStreet, FakeBoardNew, FakePostflopHand};
+use crate::{eval_hand::real_comb, AgroStreet, FakeBoardNew, FakePostflopHand, Position};
 use std::fmt::{Debug, Display};
 
 use serde::{Deserialize, Serialize};
+
+use super::{
+    eval_fake_hand::{fake_comb_side_fd, fake_comb_side_ready, fake_comb_side_sd},
+    fake_postflop::Utils,
+    PostflopGame,
+};
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum Spr {
@@ -78,5 +84,35 @@ impl Debug for FakePostflopNew {
             self.spr
         );
         write!(f, "{}", s)
+    }
+}
+impl FakePostflopNew {
+    pub fn from(game: &PostflopGame, position: Position) -> Self {
+        let player = game.player_by_position_as_ref(position);
+        let combination = real_comb(&player.hand, &game.cards);
+
+        let fake_hand = FakePostflopHand {
+            ready: fake_comb_side_ready(&player.hand, combination, &game.cards),
+            flash_draw: fake_comb_side_fd(&player.hand, combination, &game.cards),
+            street_draw: fake_comb_side_sd(&player.hand, combination, &game.cards),
+        };
+
+        let blockers = Utils::we_have_blockers(
+            &player.hand.cards,
+            &Utils::new_fake_flop_board(&game),
+            &game,
+        );
+
+        let spr = player.stack_size;
+
+        FakePostflopNew {
+            // river: 4*15*2*2*3*3=2160
+            fake_board: Utils::new_fake_flop_board(&game),
+            my_fake_hand: fake_hand,
+            blockers,
+            ch_board_str: false,
+            prev_agr: AgroStreet::NoOne,
+            spr: Spr::from(spr),
+        }
     }
 }
