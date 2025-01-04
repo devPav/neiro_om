@@ -92,6 +92,12 @@ fn main() {
     let games_str: HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>> =
         serde_json::from_str(&contents).unwrap();
     println!("Count of river games inlined: {}", games_str.len());
+    let mut games: Vec<(PostflopGame, Vec<(FakePostflopNew, Position, ReadyHand)>)> =
+        Vec::with_capacity(games_str.len());
+    for (k, v) in games_str {
+        let river_game: PostflopGame = serde_json::from_str(&k).unwrap();
+        games.push((river_game, v));
+    }
 
     unsafe {
         GLOBAL_GENERATION = args.generation_arg;
@@ -106,7 +112,7 @@ fn main() {
             }
         };
 
-        gen_multithread_preflop_postflop_games(10, games_str.clone());
+        gen_multithread_preflop_postflop_games(10, games.clone());
         unsafe {
             GLOBAL_GENERATION += 1;
         }
@@ -160,12 +166,12 @@ fn _print_details_preflop(map: &HashMap<FakePostflopNew, Vec<GraphPoint>>) {
 }
 fn gen_multithread_preflop_postflop_games(
     workers_count: u8,
-    games_str: HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>>,
+    games: Vec<(PostflopGame, Vec<(FakePostflopNew, Position, ReadyHand)>)>,
 ) {
     let mut result: HashMap<FakePostflopNew, Vec<GraphPoint>> = HashMap::new();
 
     // Разобью общий список играемых рук на "workers_count" списков
-    let mut lists = split(games_str, workers_count);
+    let mut lists = split(games, workers_count);
 
     let mut handles = Vec::new();
     for _ in 1..=workers_count {
@@ -216,30 +222,17 @@ fn serde_result(result: HashMap<FakePostflopNew, Vec<GraphPoint>>) {
 }
 
 fn split(
-    games_str: HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>>,
+    mut games: Vec<(PostflopGame, Vec<(FakePostflopNew, Position, ReadyHand)>)>,
     workers_count: u8,
-) -> Vec<HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>>> {
+) -> Vec<Vec<(PostflopGame, Vec<(FakePostflopNew, Position, ReadyHand)>)>> {
     let mut result = Vec::with_capacity(11);
 
-    let mut vec = games_str.into_iter().collect::<Vec<_>>();
-    let step_size = vec.len() / workers_count as usize;
+    let step_size = games.len() / workers_count as usize;
     for _ in 1..workers_count {
-        let vec2 = vec.split_off(vec.len() - step_size);
-        let mut map = HashMap::new();
-        for (k, v) in vec2 {
-            if let Some(_) = map.insert(k, v) {
-                unreachable!()
-            }
-        }
-        result.push(map);
+        let vec2 = games.split_off(games.len() - step_size);
+        result.push(vec2);
     }
-    let mut map = HashMap::new();
-    for (k, v) in vec {
-        if let Some(_) = map.insert(k, v) {
-            unreachable!()
-        }
-    }
-    result.push(map);
+    result.push(games);
     result
 }
 fn gen_multithread_serde_games(workers_count: u8) {
@@ -263,17 +256,16 @@ fn gen_multithread_serde_games(workers_count: u8) {
     write_to_file(content_json_str, &file_name);
 }
 fn gen_games(
-    games_str: HashMap<String, Vec<(FakePostflopNew, Position, ReadyHand)>>,
+    games: Vec<(PostflopGame, Vec<(FakePostflopNew, Position, ReadyHand)>)>,
 ) -> HashMap<FakePostflopNew, Vec<GraphPoint>> {
     let cur_gen = unsafe { GLOBAL_GENERATION };
-    println!("Thread river games inlined: {}", games_str.len());
+    println!("Thread river games inlined: {}", games.len());
 
     let prev_gen_graphs = unsafe { &PREV_GRAPH };
 
     let time = Instant::now();
     let mut fakes_graphs = HashMap::new();
-    for (river_game_str, vec_situation) in games_str {
-        let river_game: PostflopGame = serde_json::from_str(&river_game_str).unwrap();
+    for (river_game, vec_situation) in games {
         let first_situation = vec_situation[0].clone();
         let second_situation = vec_situation[1].clone();
 
@@ -333,7 +325,7 @@ fn gen_games(
         } else {
             let mut real_hands_end_current = real_hands_end.clone();
             let mut river_game_current = river_game.clone();
-            // Непосредственная игра по ветке.
+            // Непосредственная игра по лучшим нодам.
             let nodes_by_poses = play_river(
                 None,
                 &mut river_game_current,
@@ -365,9 +357,32 @@ fn gen_games(
             }
         }
     }
+    if cur_gen != 0 {
+        join_graphs(&mut fakes_graphs, prev_gen_graphs);
+    }
 
     println!("Seconds gone: {}", time.elapsed().as_secs());
     fakes_graphs
+}
+
+fn join_graphs(
+    fakes_graphs: &mut HashMap<FakePostflopNew, Vec<GraphPoint>>,
+    prev_gen_graphs: &Option<HashMap<FakePostflopNew, Vec<GraphPoint>>>,
+) {
+    let prev_graphs = prev_gen_graphs.clone().unwrap();
+    for (cur_fake, cur_points) in fakes_graphs {
+        for cur_point in cur_points {
+            if cur_point.hands == 0 {
+                let prev_points = prev_graphs.get(cur_fake).unwrap();
+                let prev_point = prev_points
+                    .iter()
+                    .find(|x| x.node == cur_point.node)
+                    .unwrap();
+                cur_point.hands = prev_point.hands;
+                cur_point.win = prev_point.win;
+            }
+        }
+    }
 }
 
 fn read_graph(cur_gen: u8) -> HashMap<FakePostflopNew, Vec<GraphPoint>> {
